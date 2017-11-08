@@ -11,8 +11,12 @@ namespace DobotConsoleControl
 
     class Program
     {
-        private static RobotPoint pickPoint = new RobotPoint(228.7848, -96.1451, -20, -22.7647);
-        private static RobotPoint placePoint = new RobotPoint(225.6651, 118.4177, -20, 27.6882);
+        private static RobotPoint lithPickup = new RobotPoint(233.41, 77.414, -56.1716, 19.1118);
+        private static RobotPoint buildPlace = new RobotPoint(99.9342, 162.2353, -62.6665, 58.3676);
+        private static RobotPoint pickPoint = lithPickup;
+        private static RobotPoint placePoint = buildPlace;
+        //private static RobotPoint pickPoint = new RobotPoint(228.7848, -96.1451, -20, -22.7647);
+        //private static RobotPoint placePoint = new RobotPoint(225.6651, 118.4177, -20, 27.6882);
         private static RobotPoint chillPoint = new RobotPoint(247.658, 61.7616, 50, 14);
         private static RobotPoint homePoint = new RobotPoint(250, 0, 0, 0);
         private static bool isConnected = false;
@@ -40,10 +44,9 @@ namespace DobotConsoleControl
         static void Main(string[] args)
         {
             WriteToConsole("WELCOME TO THE DOBOT HELPER\n");
-            WriteToConsole("Here are some helpful commands:\n");
             WriteToConsole("Syntax is as follows: command(parameter1,parameter2)");
-            WriteToConsole("Here are some available commands: ");
-            WriteToConsole("setdwell\tsetlayerheight\tstackone");
+            WriteToConsole("Here are some available commands: \n");
+            WriteToConsole("setdwell\tsetlayerheight\tstackone\n\n\n");
             //WriteToConsole("home\tstop\tgetpose\tgeterror\n");
 
             StartDobot();
@@ -198,6 +201,9 @@ namespace DobotConsoleControl
                     hParams.z = (float)homePoint.Z;
                     hParams.r = (float)homePoint.R;
                     DobotDll.SetHOMEParams(ref hParams, false, ref lastCmdNumber);
+                    HOMECmd hCmd;
+                    hCmd.temp = 1;
+                    DobotDll.SetHOMECmd(ref hCmd, false, ref lastCmdNumber);
 
                     break;
 
