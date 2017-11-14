@@ -1,36 +1,171 @@
-﻿using DobotClientDemo.CPlusDll;
+﻿#define DEBUG
+
+
+using DobotClientDemo.CPlusDll;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
 namespace DobotConsoleControl
 {
-    // Some code was used from this website:
+    // Some code was used or referenced from these websites:
     // https://www.codeproject.com/Articles/816301/Csharp-Building-a-Useful-Extensible-NET-Console-Ap
+    // https://social.msdn.microsoft.com/Forums/vstudio/en-US/707e9ae1-a53f-4918-8ac4-62a1eddb3c4a/detecting-console-application-exit-in-c?forum=csharpgeneral
+
+
+    public class RobotPoint : ICloneable
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+        public double Z { get; set; }
+        public double R { get; set; }
+
+        public RobotPoint(double x, double y, double z, double r)
+        {
+            X = x;
+            Y = y;
+            Z = z;
+            R = r;
+        }
+
+        public object Clone()
+        {
+            return new RobotPoint(X, Y, Z, R);
+        }
+
+        public override string ToString()
+        {
+            return $"point:\tx= {X}\ty= {Y}\tz= {Z}\tr= {R}";
+        }
+    }
+
+    abstract class RbtAction
+    {
+        public enum ACTION
+        {
+            move,
+            vacuum,
+            dwell
+        }
+
+        public static ACTION _action;
+        protected static ulong _cmdNumber = 0;
+
+        public static ulong CmdNumber { get => _cmdNumber; set => _cmdNumber = value; }
+
+        public abstract ulong queueAction();
+        public abstract string report();
+        
+    }
+
+    class MoveAction : RbtAction
+    {
+        public static RobotPoint _point;
+        public MoveAction (RobotPoint point)
+        {
+            _action = ACTION.move;
+            _point = point;
+        }
+
+        public override ulong queueAction()
+        {
+            PTPCmd pdbCmd;
+
+            pdbCmd.ptpMode = (byte)PTPMode.PTPMOVLXYZMode;
+            pdbCmd.x = (float) _point.X;
+            pdbCmd.y = (float) _point.Y;
+            pdbCmd.z = (float) _point.Z;
+            pdbCmd.rHead = (float) _point.R;
+
+            // communication thing, keeps trying to tell it to do a command until it takes
+            while (true)
+            {
+                int ret = DobotDll.SetPTPCmd(ref pdbCmd, true, ref _cmdNumber);
+                if (ret == 0)
+                    break;
+            }
+
+            return _cmdNumber;
+        }
+
+        public override string report()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    class VacAction : RbtAction
+    {
+        public static bool _on;
+        public VacAction(bool vacOn)
+        {
+            _action = ACTION.vacuum;
+            _on = vacOn;
+        }
+
+        public override ulong queueAction()
+        {
+            DobotDll.SetEndEffectorSuctionCup(true, _on, true, ref _cmdNumber);
+
+            return _cmdNumber;
+        }
+
+        public override string report()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    class DwellAction: RbtAction
+    {
+        public static int _time;
+        public DwellAction(int time)
+        {
+            _action = ACTION.dwell;
+            _time = time;
+        }
+
+        public override ulong queueAction()
+        {
+            WAITCmd waitCmd;
+            waitCmd.timeout = (UInt32) _time;
+            DobotDll.SetWAITCmd(ref waitCmd, true, ref _cmdNumber);
+            return _cmdNumber;
+        }
+
+        public override string report()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
 
     class Program
     {
-        private static RobotPoint lithPickup = new RobotPoint(233.41, 77.414, -56.1716, 19.1118);
-        private static RobotPoint buildPlace = new RobotPoint(99.9342, 162.2353, -62.6665, 58.3676);
-        private static RobotPoint pickPoint = lithPickup;
-        private static RobotPoint placePoint = buildPlace;
+        private static RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -57.5127, -10.6148);
+        private static RobotPoint buildPlace = new RobotPoint(168.2096, 3.2643, -49.8812, -10.6148);
+        private static RobotPoint pickPoint = (RobotPoint) lithPickup.Clone();
+        private static RobotPoint pickHigh = new RobotPoint(167.1955, -147.1283, 50, -10.6148);
+        private static RobotPoint placePoint = (RobotPoint) buildPlace.Clone();
+        //private static RobotPoint placeHigh = (RobotPoint)buildPlace.Clone();
         //private static RobotPoint pickPoint = new RobotPoint(228.7848, -96.1451, -20, -22.7647);
         //private static RobotPoint placePoint = new RobotPoint(225.6651, 118.4177, -20, 27.6882);
-        private static RobotPoint chillPoint = new RobotPoint(247.658, 61.7616, 50, 14);
+        private static RobotPoint chillPoint = new RobotPoint(28.8, -191.653, 7.206, -81);//new RobotPoint(247.658, 61.7616, 50, 14);
         private static RobotPoint homePoint = new RobotPoint(250, 0, 0, 0);
         private static bool isConnected = false;
         private System.Timers.Timer posTimer = new System.Timers.Timer();
         private static Pose pose = new Pose();
         private static ulong lastCmdNumber = 0;
-        private static double clearHeight = 50;
+        private static double clearHeight = 30;
         private static bool waitToContinue = false;
-        private enum PRGSTATE { INPUT, RUN, CONTINUE };
+        private enum PRGSTATE { INPUT, RUN, CONTINUE, RUNSQ };
         private static PRGSTATE state = PRGSTATE.INPUT;
         private static double stackHeight = 0;
         private static int layerCount = 0;
-        private static double dwellTime = 1000;
-        private static double layerHeight = 1;
+        private static int dwellTime = 1000;
+        private static double layerHeight = 3;
         private static double shortPause = 200;
         private static float velocityRatio = 30;
         private static float accelerationRatio = 30;
@@ -39,17 +174,25 @@ namespace DobotConsoleControl
         private static float medMode = 60;
         private static float highMode = 100;
 
+        private static bool isClosing = false;
 
+        //iniitalizes the queue that's used to bypass the hardware queue which was creating problems
+        //with ignoring commands for no reason
+        private static Queue<RbtAction> pointQ = new Queue<RbtAction>();
 
         static void Main(string[] args)
         {
-            WriteToConsole("WELCOME TO THE DOBOT HELPER\n");
-            WriteToConsole("Syntax is as follows: command(parameter1,parameter2)");
-            WriteToConsole("Here are some available commands: \n");
-            WriteToConsole("setdwell\tsetlayerheight\tstackone\n\n\n");
+            
             //WriteToConsole("home\tstop\tgetpose\tgeterror\n");
 
+            // used to intercept CTRL-C command and make dobot E-stop
+            SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
+
+
             StartDobot();
+            WriteToConsole("\n\nWELCOME TO THE DOBOT HELPER\n");
+            WriteToConsole("Syntax is as follows: command(parameter1,parameter2)");
+            WriteToConsole("type help for some more commands\n\n");
             Run();
             DobotDll.DisconnectDobot();
         }
@@ -57,9 +200,9 @@ namespace DobotConsoleControl
         static void Run()
         {
             ulong currentCmdIndex = 0;
-            while (true)
+            while (!isClosing)
             {
-                Thread.Sleep(200);
+                Thread.Sleep(100);
                 switch (state)
                 {
                     case PRGSTATE.RUN:
@@ -79,17 +222,61 @@ namespace DobotConsoleControl
                         }
                         break;
 
+                    // Runs using the software queue, trying to fix a bug with hardware operation
+                    // this will be slower than hardware queue
+                    case PRGSTATE.RUNSQ:
+                        ulong hIndex = 0;
+                        DobotDll.GetQueuedCmdCurrentIndex(ref hIndex);
+
+                        if (hIndex == lastCmdNumber)
+                        {
+                            // hardware is idle
+                            if (pointQ.Count != 0)      //makes sure something is in the queue
+                            {
+                                RbtAction rbtAction = pointQ.Dequeue();
+                                lastCmdNumber = rbtAction.queueAction();
+                            }
+                            else    // if nothing is in the software queue and the hardware is idle you're finished give control back to user
+                            {
+                                Console.Write("\rQueue finished execution\n");
+                                WriteToConsole($"Currently at\theight:  {stackHeight}\tlayer#:  {layerCount}");
+                                state = PRGSTATE.INPUT;
+                                break;
+                            }
+                        } else
+                        { 
+                            // updates user on progress
+                            currentCmdIndex = hIndex;
+                            Console.Write($"\rQueue command index: {currentCmdIndex} out of {lastCmdNumber}");
+                        }
+
+                        /*
+                        if (hIndex != currentCmdIndex)
+                        {
+                            currentCmdIndex = hIndex;
+                            Console.Write($"\rQueue command index: {currentCmdIndex} out of {lastCmdNumber}");
+
+                            if (currentCmdIndex == lastCmdNumber)
+                            {
+                                Console.Write("\rQueue finished execution\n");
+                                WriteToConsole($"Currently at\theight:  {stackHeight}\tlayer#:  {layerCount}");
+                                state = PRGSTATE.INPUT;
+                            }
+                        }*/
+                        break;
+
+
                     case PRGSTATE.CONTINUE:
                         
                         break;
 
+                    // waits for user input
                     case PRGSTATE.INPUT:
-                    //check dobot cmd index
 
                         var consoleInput = ReadFromConsole();
                         if (string.IsNullOrWhiteSpace(consoleInput) && !waitToContinue) continue;
 
-
+                        // attempts to parse the input
                         try
                         {
                             // Execute the command:
@@ -127,6 +314,24 @@ namespace DobotConsoleControl
             
             switch (commands[0])
             {
+                case "clearAlarms":
+                    clearAlarms();
+                    break;
+                case "checkAlarms":
+                    checkAlarms();
+                    break;
+                case "reconnect":
+                    StartDobot();
+                    break;
+                case "help":
+                    string readMe = System.IO.File.ReadAllText("ReadMe.txt");
+                    WriteToConsole("\n");
+                    WriteToConsole(readMe);
+                    WriteToConsole("\n");
+                    break;
+                case "swStackOne":
+                    swStackOne();
+                    break;
                 case "stackone":
                     stackOne();
                     break;
@@ -174,15 +379,22 @@ namespace DobotConsoleControl
                         goPoint(pickPoint, PTPMode.PTPMOVLXYZMode);
                     else if (commands[1].Equals("place"))
                         goPoint(placePoint, PTPMode.PTPMOVLXYZMode);
+                    else if (commands[1].EndsWith("pickplace"))
+                        goPickPlace();//goPoint(pickHigh, PTPMode.PTPMOVLXYZMode);
+                    else if (commands[1].EndsWith("pickhigh"))
+                        goHighFromCurrent(pickPoint);
+                    else if (commands[1].EndsWith("placehigh"))
+                        goHighFromCurrent(placePoint);
                         break;
-                case "setlayerheight":
+                case "setlayerdelta":
                     layerHeight = Double.Parse(commands[1]);
+                    WriteToConsole($"New layer delta: {layerHeight} mm");
                     break;
 
                 case "setdwell":
-                    dwellTime = Double.Parse(commands[1]);
+                    dwellTime = int.Parse(commands[1]);
 
-                    WriteToConsole($"New dwell time: {dwellTime}");
+                    WriteToConsole($"New dwell time: {dwellTime} ms");
                     break;
 
                 case "setpoint":
@@ -206,7 +418,10 @@ namespace DobotConsoleControl
                     DobotDll.SetHOMECmd(ref hCmd, false, ref lastCmdNumber);
 
                     break;
-
+                //case "gohigh":
+                //    goHighFromCurrent(placePoint);
+                //    goHigh(placePoint, pickPoint);
+                //    break;
                 case "gethome":
                     WriteToConsole(getHome());
                     break;
@@ -244,7 +459,24 @@ namespace DobotConsoleControl
             point = new RobotPoint(x, y, z, r);
         }
 
-#region DobotStuff
+
+
+        [DllImport("Kernel32")]
+        public static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);      //external receives a deleagete
+        public delegate bool HandlerRoutine();      //delegate type to be used as handler routine for SetConsoleCtrlHandler
+        /// <summary>
+        /// Should force the dobot to E-stop if you close the program
+        /// </summary>
+        /// <returns></returns>
+        private static bool ConsoleCtrlCheck()
+        {
+            WriteToConsole("\n\n!!! Attempting to stop Dobot !!!\n\n");
+            DobotDll.SetQueuedCmdForceStopExec();
+            return true;
+        }
+
+
+        #region DobotStuff
         private static void StartDobot()
         {
             StringBuilder fwType = new StringBuilder(60);
@@ -257,7 +489,7 @@ namespace DobotConsoleControl
             //start connect
             if (ret != (int)DobotConnect.DobotConnect_NoError)
             {
-                Console.WriteLine("Connect error");
+                Console.WriteLine("!!!!!!!!! Connection error !!!!!!!!!");
                 return;
             }
             Console.WriteLine("Connected to Dobot");
@@ -279,7 +511,7 @@ namespace DobotConsoleControl
 
             SetParam();
 
-            AlarmTest();
+            checkAlarms();
         }
 
         private static void vac(bool on)
@@ -295,6 +527,38 @@ namespace DobotConsoleControl
             return hParams.ToString();
         }
 
+        /// <summary>
+        /// Implements a software queue for the stackOne procedure since the hardware queue was causing bugs
+        /// </summary>
+        private static void swStackOne()
+        {
+
+            //retrieves the current position of the robot
+            DobotDll.GetPose(ref pose);
+            RobotPoint currentPosition = new RobotPoint(pose.x, pose.y, pose.z, pose.rHead);
+            RobotPoint stackPoint = (RobotPoint)buildPlace.Clone();
+            stackHeight = stackPoint.Z + layerCount * layerHeight;
+            stackPoint.Z = stackHeight;
+
+            pointQ.Enqueue(new MoveAction(highPoint(currentPosition)));         // raises from current position
+            pointQ.Enqueue(new MoveAction(highPoint(lithPickup)));              // hovers over lith plate
+            pointQ.Enqueue(new MoveAction(lithPickup));                         // lowers to lith plate 
+            pointQ.Enqueue(new VacAction(true));                                // turns on vacuum to pickup plate
+            pointQ.Enqueue(new MoveAction(highPoint(lithPickup)));              // hovers over lith plate position
+            pointQ.Enqueue(new MoveAction(highPoint(stackPoint)));              // hovers over build plate
+            pointQ.Enqueue(new MoveAction(stackPoint));                         // lowers to build height
+            pointQ.Enqueue(new DwellAction(dwellTime));                         // dwells for set amount of time
+            pointQ.Enqueue(new MoveAction(highPoint(stackPoint)));              // hovers over build plate
+            pointQ.Enqueue(new MoveAction(highPoint(lithPickup)));              // hovers over lith plate position
+            pointQ.Enqueue(new MoveAction(lithPickup));                         // lowers to the lith plate position
+            pointQ.Enqueue(new VacAction(false));                               // turns off vacuum
+            pointQ.Enqueue(new MoveAction(highPoint(lithPickup)));              // hovers over lith pickup position
+            pointQ.Enqueue(new MoveAction(chillPoint));                         // goes to resting spot
+            layerCount++;
+            state = PRGSTATE.RUNSQ;
+            Console.Write("\n");
+        }
+
         private static void stackOne()
         {
             goHighFromCurrent(pickPoint);
@@ -303,12 +567,12 @@ namespace DobotConsoleControl
             RobotPoint stackPoint = (RobotPoint)placePoint.Clone();
             stackHeight = stackPoint.Z + layerCount * layerHeight;
             stackPoint.Z = stackHeight;
-            goHigh(pickPoint, stackPoint);
+            hqGoHigh(pickPoint, stackPoint);
             wait(dwellTime);
-            goHigh(stackPoint, pickPoint);
+            hqGoHigh(stackPoint, pickPoint);
             wait(shortPause);
             vac(false);
-            goHigh(pickPoint, chillPoint);
+            hqGoHigh(pickPoint, chillPoint);
             layerCount++;
             state = PRGSTATE.RUN;
             Console.Write("\n");
@@ -317,10 +581,10 @@ namespace DobotConsoleControl
         private static void runProg()
         {
             goHighFromCurrent(chillPoint);
-            goHigh(chillPoint, pickPoint);
+            hqGoHigh(chillPoint, pickPoint);
             vac(true);
-            goHigh(pickPoint, placePoint);
-            goHigh(placePoint, pickPoint);
+            hqGoHigh(pickPoint, placePoint);
+            hqGoHigh(placePoint, pickPoint);
             vac(false);
             state = PRGSTATE.RUN;
         }
@@ -337,18 +601,58 @@ namespace DobotConsoleControl
             DobotDll.GetPose(ref pose);
 
             RobotPoint currentPosition = new RobotPoint(pose.x, pose.y, pose.y, pose.rHead);
-            goPoint(highPoint(currentPosition));
-            goPoint(highPoint(point));
-            goPoint(point);
+            hqGoPoint(highPoint(currentPosition));
+            hqGoPoint(highPoint(point));
+            hqGoPoint(point);
         }
 
-        private static void goHigh(RobotPoint point1, RobotPoint point2)
+        private static void goPickPlace()
+        {
+            RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -56.5127, -10.6148);
+            RobotPoint buildPlace = new RobotPoint(168.2096, 3.2643, -48.8812, -10.6148);
+            RobotPoint lithPickupHigh = new RobotPoint(167.1955, -147.1283, 50, -10.6148);
+            RobotPoint buildPlaceHigh = new RobotPoint(168.2096, 3.2643, 50, -10.6148);
+
+            hqGoPoint(buildPlaceHigh);
+            Thread.Sleep(500);
+            hqGoPoint(buildPlace);
+            Thread.Sleep(500);
+            hqGoPoint(buildPlaceHigh);
+            Thread.Sleep(500);
+            hqGoPoint(lithPickupHigh);
+            Thread.Sleep(500);
+            hqGoPoint(lithPickup);
+            Thread.Sleep(500);
+        }
+
+        /// <summary>
+        /// Used when queing commands, if doing something immediate use goHighFromCurrent
+        /// You need to feed this method the expected state (point1) as you don't have that future state
+        /// when you are sending the command to the queu.
+        /// </summary>
+        /// <param name="point1"></param>
+        /// <param name="point2"></param>
+        private static void hqGoHigh(RobotPoint point1, RobotPoint point2)
         {
             //WriteToConsole($"point2 start {point2.Z}");
-            goPoint(highPoint(point1));
-            goPoint(highPoint(point2));
+            hqGoPoint(highPoint(point1));
+            hqGoPoint(highPoint(point2));
             //WriteToConsole($"point2 end {point2.Z}");
-            goPoint(point2);
+            //RobotPoint pt2 = (RobotPoint) point2.Clone();
+            //pt2.Z = clearHeight;
+            //goPoint(pt2);
+            hqGoPoint(point2);
+        }
+
+        private static List<RobotPoint> goHigh(RobotPoint point1, RobotPoint point2)
+        {
+            List<RobotPoint> mProfile = new List<RobotPoint>();
+
+            mProfile.Add(highPoint(point1));
+            mProfile.Add(highPoint(point2));
+            mProfile.Add(point2);
+
+            return mProfile;
         }
 
         private static void wait(double ms)
@@ -358,17 +662,31 @@ namespace DobotConsoleControl
             DobotDll.SetWAITCmd(ref waitCmd, true, ref lastCmdNumber);
         }
 
-        private static void goPoint(RobotPoint point)
+        private static void hqGoPoint(RobotPoint point)
         {
+            WriteToConsole(point.ToString());
             goPoint(point, PTPMode.PTPMOVLXYZMode);
         }
 
         private static void goPoint(RobotPoint point, PTPMode mode) 
         {
-            ptp(mode, point.X, point.Y, point.Z, point.R);
+            hqPTP(mode, point.X, point.Y, point.Z, point.R);
         }
 
-        private static UInt64 ptp(PTPMode style, double x, double y, double z, double r)
+        private static PTPCmd qGoPoint(RobotPoint point)
+        {
+            PTPCmd pdbCmd;
+
+            pdbCmd.ptpMode = (byte)PTPMode.PTPMOVLXYZMode;
+            pdbCmd.x = (float)point.X;
+            pdbCmd.y = (float)point.Y;
+            pdbCmd.z = (float)point.Z;
+            pdbCmd.rHead = (float)point.R;
+
+            return pdbCmd;
+        }
+
+        private static UInt64 hqPTP(PTPMode style, double x, double y, double z, double r)
         {
             PTPCmd pdbCmd;
             
@@ -377,6 +695,8 @@ namespace DobotConsoleControl
             pdbCmd.y = (float)y;
             pdbCmd.z = (float)z;
             pdbCmd.rHead = (float)r;
+
+            // communication thing, keeps trying to tell it to do a command until it takes
             while (true)
             {
                 int ret = DobotDll.SetPTPCmd(ref pdbCmd, true, ref lastCmdNumber);
@@ -425,7 +745,7 @@ namespace DobotConsoleControl
             DobotDll.SetPTPCommonParams(ref pbdParam, false, ref cmdIndex);
         }
 
-        private static void AlarmTest()
+        private static void checkAlarms()
         {
             int ret;
             byte[] alarmsState = new byte[32];
@@ -439,14 +759,119 @@ namespace DobotConsoleControl
                     if ((alarm & 0x01 << j) > 0)
                     {
                         int alarmIndex = i * 8 + j;
+                        
+
                         switch (alarmIndex)
                         {
                             case 0x00:
                                 { // reset
-                                    //Get Alarm status: reset
+                                    WriteToConsole("Get Alarm status: reset");
                                     break;
                                 }
-                            /* other status*/
+                            case 0x01:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: undefined instruction");
+                                    break;
+                                }
+                            case 0x02:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: file system error");
+                                    break;
+                                }
+                            case 0x03:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: comm failure");
+                                    break;
+                                }
+                            case 0x04:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: angle sensor read error");
+                                    break;
+                                }
+                            case 0x11:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: inverse resolve alarm");
+                                    break;
+                                }
+                            case 0x12:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: inverse resolve limit");
+                                    break;
+                                }
+                            case 0x13:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: data repetition");
+                                    break;
+                                }
+                            case 0x15:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: arc input parameter alarm");
+                                    break;
+                                }
+                            case 0x21:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: inverse resolve alarm");
+                                    break;
+                                }
+                            case 0x22:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: inverse resolve limit");
+                                    break;
+                                }
+                            case 0x40:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 1 positive limit alarm");
+                                    break;
+                                }
+                            case 0x41:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 1 negative limit alarm");
+                                    break;
+                                }
+                            case 0x42:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 2 positinve limit alarm");
+                                    break;
+                                }
+                            case 0x43:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 2 negative limit alarm");
+                                    break;
+                                }
+                            case 0x44:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 3 positive limit alarm");
+                                    break;
+                                }
+                            case 0x45:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 3 negative limit alarm");
+                                    break;
+                                }
+                            case 0x46:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 4 positive limit alarm");
+                                    break;
+                                }
+                            case 0x47:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: joint 4 negative limit alarm");
+                                    break;
+                                }
+
+                            case 0x48:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: parallegram positive limit alarm");
+                                    break;
+                                }
+                            case 0x49:
+                                { // reset
+                                    WriteToConsole("Get Alarm status: parallegram negative limit alarm");
+                                    break;
+                                }
+
+
+
                             default:
                                 break;
                         }
@@ -454,6 +879,11 @@ namespace DobotConsoleControl
                 }
             }
             //DobotDll.ClearAllAlarmsState();
+        }
+
+        private static void clearAlarms()
+        {
+            DobotDll.ClearAllAlarmsState();
         }
 
         /// <summary>
@@ -491,26 +921,6 @@ namespace DobotConsoleControl
             */
         }
 
-        public class RobotPoint : ICloneable 
-        {
-            public double X { get; set; }
-            public double Y { get; set; }
-            public double Z { get; set; }
-            public double R { get; set; }
-
-            public RobotPoint(double x, double y, double z, double r)
-            {
-                X = x;
-                Y = y;
-                Z = z;
-                R = r;
-            }
-
-            public object Clone()
-            {
-                return new RobotPoint(X, Y, Z, R);
-            }
-        }
     }
 #endregion
 }
