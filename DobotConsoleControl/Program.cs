@@ -37,7 +37,7 @@ namespace DobotConsoleControl
 
         public override string ToString()
         {
-            return $"point:\tx= {X}\ty= {Y}\tz= {Z}\tr= {R}";
+            return $"   point:\tx= {X}\ty= {Y}\tz= {Z}\tr= {R}";
         }
     }
 
@@ -144,8 +144,9 @@ namespace DobotConsoleControl
 
     class Program
     {
+        private static RobotPoint heightCheck = new RobotPoint(181.7, 2.77, -35, -10.6148);
         private static RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -57.5127, -10.6148);
-        private static RobotPoint buildPlace = new RobotPoint(168.2096, 3.2643, -49.8812, -10.6148);
+        private static RobotPoint buildPlace = new RobotPoint(168.2096, 3.2643, -47, -10.6148);
         private static RobotPoint pickPoint = (RobotPoint) lithPickup.Clone();
         private static RobotPoint pickHigh = new RobotPoint(167.1955, -147.1283, 50, -10.6148);
         private static RobotPoint placePoint = (RobotPoint) buildPlace.Clone();
@@ -188,11 +189,13 @@ namespace DobotConsoleControl
             // used to intercept CTRL-C command and make dobot E-stop
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
 
-
-            StartDobot();
             WriteToConsole("\n\nWELCOME TO THE DOBOT HELPER\n");
             WriteToConsole("Syntax is as follows: command(parameter1,parameter2)");
-            WriteToConsole("type help for some more commands\n\n");
+            writeHelp();
+            WriteToConsole("You can type \"help\" to show the above information again\nYOU SHOULD START BY RUNNING := home()\n");
+
+            StartDobot();
+            
             Run();
             DobotDll.DisconnectDobot();
         }
@@ -216,7 +219,7 @@ namespace DobotConsoleControl
                             if (currentCmdIndex == lastCmdNumber)
                             {
                                 Console.Write("\rQueue finished execution\n");
-                                WriteToConsole($"Currently at\theight:  {stackHeight}\tlayer#:  {layerCount}");
+                                WriteToConsole($"Currently at\theight:  {stackHeight}\tlayer#:  {layerCount}",2);
                                 state = PRGSTATE.INPUT;
                             }
                         }
@@ -301,8 +304,11 @@ namespace DobotConsoleControl
         static string Execute(string command)
         {
             char[] delimeters = { '(', ',', ')' };
-            string[] commands = command.Split(delimeters);
-
+            List<string> commands = new List<string>(command.Split(delimeters));
+            foreach (string cmd in commands)
+            {
+                cmd.Trim();
+            }
             /*
             foreach (string c in commands)
             {
@@ -320,14 +326,17 @@ namespace DobotConsoleControl
                 case "checkAlarms":
                     checkAlarms();
                     break;
+                case "clearQueue":
+                    DobotDll.SetQueuedCmdClear();
+                    break;
+                case "startQueue":
+                    DobotDll.SetQueuedCmdStartExec();
+                    break;
                 case "reconnect":
                     StartDobot();
                     break;
                 case "help":
-                    string readMe = System.IO.File.ReadAllText("ReadMe.txt");
-                    WriteToConsole("\n");
-                    WriteToConsole(readMe);
-                    WriteToConsole("\n");
+                    writeHelp();
                     break;
                 case "swStackOne":
                     swStackOne();
@@ -374,7 +383,84 @@ namespace DobotConsoleControl
                             break;
                     }
                     break;
+
+                case "startcheck":
+                    vac(false);
+                    goHighFromCurrent(pickPoint);
+                    vac(true);
+                    wait(shortPause);
+                    hqGoHigh(pickPoint, heightCheck);
+                    break;
+
+                case "endcheck":
+                    goHighFromCurrent(pickPoint);
+                    vac(false);
+                    break;
+
                 case "go":
+                    RobotPoint rPoint = null;
+                    switch (commands[2])
+                    {
+                        case "pick":
+                            rPoint = pickPoint;
+                            //goPoint(pickPoint, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        case "place":
+                            rPoint = placePoint;
+                            //goPoint(placePoint, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        //case "pickplace":
+                            //rPoint = pickPoint;
+                            //goPickPlace();//goPoint(pickHigh, PTPMode.PTPMOVLXYZMode);
+                            //break;
+                        //case "pickhigh":
+                            //goHighFromCurrent(pickPoint);
+                          //  break;
+                        //case "placehigh":
+                            //goHighFromCurrent(placePoint);
+                          //  break;
+                        case "zcheck":
+                            rPoint = heightCheck;//goHighFromCurrent(heightCheck);
+                            break;
+                        case "chill":
+                            rPoint = chillPoint;
+                            //goHighFromCurrent(chillPoint);
+                            break;
+                    }
+
+                    DobotDll.GetPose(ref pose);
+
+                    RobotPoint currentPosition = new RobotPoint(pose.x, pose.y, pose.z, pose.rHead);
+
+                    switch (commands[1])
+                    {
+                        case "x":
+                            currentPosition.X += Double.Parse(commands[2]);
+                            goPoint(currentPosition, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        case "y":
+                            currentPosition.Y += Double.Parse(commands[2]);
+                            goPoint(currentPosition, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        case "z":
+                            currentPosition.Z += Double.Parse(commands[2]);
+                            goPoint(currentPosition, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        case "r":
+                            currentPosition.R += Double.Parse(commands[2]);
+                            goPoint(currentPosition, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        case "direct":
+                            goPoint(rPoint, PTPMode.PTPMOVLXYZMode);
+                            break;
+                        case "high":
+                            goHighFromCurrent(rPoint);
+                            break;
+                        case "hover":
+                            goHoverFromCurrent(rPoint);
+                            break;
+                    }
+                    /*
                     if (commands[1].Equals("pick"))
                         goPoint(pickPoint, PTPMode.PTPMOVLXYZMode);
                     else if (commands[1].Equals("place"))
@@ -385,7 +471,10 @@ namespace DobotConsoleControl
                         goHighFromCurrent(pickPoint);
                     else if (commands[1].EndsWith("placehigh"))
                         goHighFromCurrent(placePoint);
-                        break;
+                    else if (commands[1].EndsWith("heightCheck"))
+                        goHighFromCurrent(heightCheck);
+                    break;*/
+                    break;
                 case "setlayerdelta":
                     layerHeight = Double.Parse(commands[1]);
                     WriteToConsole($"New layer delta: {layerHeight} mm");
@@ -412,7 +501,18 @@ namespace DobotConsoleControl
                     hParams.y = (float)homePoint.Y;
                     hParams.z = (float)homePoint.Z;
                     hParams.r = (float)homePoint.R;
-                    DobotDll.SetHOMEParams(ref hParams, false, ref lastCmdNumber);
+                    DobotDll.SetHOMEParams(ref hParams, true, ref lastCmdNumber);
+                    DobotDll.GetPose(ref pose);
+
+                    // code to make sure head of the robot is not on something before homing
+                    currentPosition = new RobotPoint(pose.x, pose.y, pose.z, pose.rHead);
+                    currentPosition.Z += 25;
+                    hqGoPoint(currentPosition);
+                    Thread.Sleep(1000);
+                    DobotDll.SetQueuedCmdStopExec();
+                    DobotDll.SetQueuedCmdClear();
+                    DobotDll.SetQueuedCmdStartExec();
+                    Thread.Sleep(1000);
                     HOMECmd hCmd;
                     hCmd.temp = 1;
                     DobotDll.SetHOMECmd(ref hCmd, false, ref lastCmdNumber);
@@ -429,8 +529,8 @@ namespace DobotConsoleControl
                     invalidCommand();
                     break;
             }
-            
-            return string.Format("Executed the {0} Command", command);
+
+            return "";//string.Format("Executed the {0} Command", command);
         }
 
         private static void invalidCommand()
@@ -438,12 +538,22 @@ namespace DobotConsoleControl
             WriteToConsole("Invalid Command Entered");
         }
 
-        public static void WriteToConsole(string message = "")
+        public static void WriteToConsole(string message = "", int feedback = 0)
         {
+            if (feedback == 1)
+            {
+                message = "  +" + message;
+            } else if (feedback == 2)
+            {
+                message = "..." + message;
+            }
+
             if (message.Length > 0)
             {
                 Console.WriteLine(message);
             }
+
+            
         }
 
         const string _readPrompt = "console> ";
@@ -472,7 +582,16 @@ namespace DobotConsoleControl
         {
             WriteToConsole("\n\n!!! Attempting to stop Dobot !!!\n\n");
             DobotDll.SetQueuedCmdForceStopExec();
+            DobotDll.SetQueuedCmdClear();
             return true;
+        }
+
+        private static void writeHelp()
+        {
+            string readMe = System.IO.File.ReadAllText("ReadMe.txt");
+            WriteToConsole("\n");
+            WriteToConsole(readMe);
+            WriteToConsole("\n");
         }
 
 
@@ -495,6 +614,10 @@ namespace DobotConsoleControl
             Console.WriteLine("Connected to Dobot");
 
             isConnected = true;
+
+            DobotDll.SetQueuedCmdClear();
+            DobotDll.SetQueuedCmdStartExec();
+
             DobotDll.SetCmdTimeout(3000);
 
             //Must set when sensor does not exist       <-- from original code
@@ -512,12 +635,15 @@ namespace DobotConsoleControl
             SetParam();
 
             checkAlarms();
+
+
         }
+
 
         private static void vac(bool on)
         {
             DobotDll.SetEndEffectorSuctionCup(true, on, true, ref lastCmdNumber);
-            WriteToConsole($"added to queue: switch VACUUM {on}");
+            WriteToConsole($"added to queue: switch VACUUM {on}", 1);
         }
 
         private static string getHome()
@@ -569,7 +695,21 @@ namespace DobotConsoleControl
             stackPoint.Z = stackHeight;
             hqGoHigh(pickPoint, stackPoint);
             wait(dwellTime);
-            hqGoHigh(stackPoint, pickPoint);
+
+            RobotPoint smoothEntryPoint = (RobotPoint) pickPoint.Clone();
+            smoothEntryPoint.X += 5;
+            smoothEntryPoint.Z += 5;
+
+            hqGoHigh(stackPoint, smoothEntryPoint);
+            wait(200);
+
+            //RobotPoint smallPickHover = (RobotPoint)pickPoint.Clone();
+            //smoothEntryPoint.Z += 7;
+
+            //hqGoPoint(smallPickHover);
+            //hqGoPoint(pickPoint);
+            
+            //hqGoHigh(stackPoint, pickPoint);
             wait(shortPause);
             vac(false);
             hqGoHigh(pickPoint, chillPoint);
@@ -596,11 +736,20 @@ namespace DobotConsoleControl
             return newPoint;
         }
 
+        private static void goHoverFromCurrent(RobotPoint point)
+        {
+            DobotDll.GetPose(ref pose);
+
+            RobotPoint currentPosition = new RobotPoint(pose.x, pose.y, pose.z, pose.rHead);
+            hqGoPoint(highPoint(currentPosition));
+            hqGoPoint(highPoint(point));
+        }
+
         private static void goHighFromCurrent(RobotPoint point)
         {
             DobotDll.GetPose(ref pose);
 
-            RobotPoint currentPosition = new RobotPoint(pose.x, pose.y, pose.y, pose.rHead);
+            RobotPoint currentPosition = new RobotPoint(pose.x, pose.y, pose.z, pose.rHead);
             hqGoPoint(highPoint(currentPosition));
             hqGoPoint(highPoint(point));
             hqGoPoint(point);
@@ -664,7 +813,7 @@ namespace DobotConsoleControl
 
         private static void hqGoPoint(RobotPoint point)
         {
-            WriteToConsole(point.ToString());
+            //WriteToConsole(point.ToString());
             goPoint(point, PTPMode.PTPMOVLXYZMode);
         }
 
@@ -703,9 +852,15 @@ namespace DobotConsoleControl
                 if (ret == 0)
                     break;
             }
+            string format = "+000.000;-000.000";//;(0)";
 
-            WriteToConsole($"added to queue: goto point \t\tX={x}\tY={y}\tZ={z}\tR={r}");
-
+            string xstr = string.Format("{000:0.00}", x);
+            string ystr = string.Format("{000:0.00}", y);
+            string zstr = string.Format("{000:0.00}", z);
+            string rstr = string.Format("{000:0.00}", r);
+            WriteToConsole($"added to queue: goto point \t\tX= {x.ToString(format)}\tY= {y.ToString(format)}\tZ= {z.ToString(format)}\tR= {r.ToString(format)}", 1);
+            //string cnslString = "added to queue: goto point \t\tX="+ string.Format("{0:0.00}", x)+"\tY ={0:0.000}\tZ={0.000}\tR={0.000}",x,y,z,r);
+            //WriteToConsole(cnslString, 1);
             return lastCmdNumber;
         }
 
