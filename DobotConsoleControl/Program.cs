@@ -712,6 +712,7 @@ namespace DobotConsoleControl
             //hqGoHigh(stackPoint, pickPoint);
             wait(shortPause);
             vac(false);
+            wait(200);
             hqGoHigh(pickPoint, chillPoint);
             layerCount++;
             state = PRGSTATE.RUN;
