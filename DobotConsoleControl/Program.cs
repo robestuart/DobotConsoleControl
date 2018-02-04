@@ -7,6 +7,9 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Xml;
+using System.Xml.Serialization;
+using System.IO;
 
 namespace DobotConsoleControl
 {
@@ -22,6 +25,10 @@ namespace DobotConsoleControl
         public double Z { get; set; }
         public double R { get; set; }
 
+        public RobotPoint()
+        {
+
+        }
         public RobotPoint(double x, double y, double z, double r)
         {
             X = x;
@@ -144,9 +151,14 @@ namespace DobotConsoleControl
 
     class Program
     {
+        private static string DATA_FILE = "data.txt";
+
+        private static Dictionary<string, RobotPoint> points = new Dictionary<string, RobotPoint>();
+
+
         private static RobotPoint heightCheck = new RobotPoint(181.7, 2.77, -35, -10.6148);
-        private static RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -57.5127, -10.6148);
-        private static RobotPoint buildPlace = new RobotPoint(168.2096, 3.2643, -47, -10.6148);
+        private static RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -58.5127, -10.6148);
+        private static RobotPoint buildPlace = new RobotPoint(168.2096, 3.2643, -47.5, -10.6148);
         private static RobotPoint pickPoint = (RobotPoint) lithPickup.Clone();
         private static RobotPoint pickHigh = new RobotPoint(167.1955, -147.1283, 50, -10.6148);
         private static RobotPoint placePoint = (RobotPoint) buildPlace.Clone();
@@ -165,11 +177,11 @@ namespace DobotConsoleControl
         private static PRGSTATE state = PRGSTATE.INPUT;
         private static double stackHeight = 0;
         private static int layerCount = 0;
-        private static int dwellTime = 1000;
-        private static double layerHeight = 3;
+        private static int dwellTime = 3000;
+        private static double layerHeight = 1.25;
         private static double shortPause = 200;
-        private static float velocityRatio = 30;
-        private static float accelerationRatio = 30;
+        private static float velocityRatio = 100;
+        private static float accelerationRatio = 100;
 
         private static float lowMode = 30;
         private static float medMode = 60;
@@ -183,7 +195,19 @@ namespace DobotConsoleControl
 
         static void Main(string[] args)
         {
-            
+            //TODO read points from XML
+            // add all the pre-defined points to the point dictionary
+            points.Add("heightCheck", heightCheck);
+            points.Add("lithPickup", lithPickup);
+            points.Add("buildPlace", buildPlace);
+            points.Add("pickPoint", pickPoint);
+            points.Add("pickHigh", pickHigh);
+            points.Add("placePoint", placePoint);
+            points.Add("chillPoint", chillPoint);
+            points.Add("homePoint", homePoint);
+
+
+
             //WriteToConsole("home\tstop\tgetpose\tgeterror\n");
 
             // used to intercept CTRL-C command and make dobot E-stop
@@ -338,8 +362,8 @@ namespace DobotConsoleControl
                 case "help":
                     writeHelp();
                     break;
-                case "swStackOne":
-                    swStackOne();
+                //case "swStackOne":
+                //    swStackOne();
                     break;
                 case "stackone":
                     stackOne();
@@ -524,6 +548,10 @@ namespace DobotConsoleControl
                 //    break;
                 case "gethome":
                     WriteToConsole(getHome());
+                    break;
+
+                case "createPoint":
+                    createPoint();
                     break;
                 default:
                     invalidCommand();
@@ -1077,6 +1105,16 @@ namespace DobotConsoleControl
             */
         }
 
+
+        private static void createPoint()
+        {
+            XmlSerializer serializer = new XmlSerializer(typeof(RobotPoint));
+            TextWriter writer = new StreamWriter(DATA_FILE);
+
+            RobotPoint testPoint = new RobotPoint(1, 2, 3, 4);
+            serializer.Serialize(writer, testPoint);
+            writer.Close();
+        }
     }
 #endregion
 }
