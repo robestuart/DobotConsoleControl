@@ -178,7 +178,7 @@ namespace DobotConsoleControl
             PrgConsole.WriteToConsole("\n\nWELCOME TO THE DOBOT HELPER\n");
             PrgConsole.WriteToConsole("Syntax is as follows: command(parameter1,parameter2)");
             PrgConsole.WriteHelp();
-            PrgConsole.WriteToConsole("You can type \"help\" to show the above information again\nYOU SHOULD START BY RUNNING := home()\n");
+            PrgConsole.WriteToConsole("You can type \"Help()\" to show the above information again\nYOU SHOULD START BY RUNNING := home()\n");
         }
 
         public static void WriteQueueStatus(ulong commandIndex, ulong finalCommandIndex)

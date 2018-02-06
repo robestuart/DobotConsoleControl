@@ -698,6 +698,8 @@ namespace DobotConsoleControl
         /// </summary>
         public static Dictionary<string,RobotPoint> ReadPoints()
         {
+            if (!File.Exists(DATA_FILE))
+                Dobot.SeedPoints();
             List<RobotPoint> pointList = new List<RobotPoint>();
             //Dictionary<string, RobotPoint> pointList = new Dictionary<string, RobotPoint>();
             XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));//typeof(Dictionary<string,RobotPoint>));
