@@ -309,7 +309,7 @@ namespace DobotConsoleControl
         private System.Timers.Timer posTimer = new System.Timers.Timer();
         private static Pose pose = new Pose();
         //private static ulong lastCmdNumber = 0;
-        private static double clearHeight = 30;
+        //private static double clearHeight = 30;
         private static bool waitToContinue = false;
         private enum PRGSTATE { INPUT, RUN, CONTINUE, RUNSQ };
         private static PRGSTATE state = PRGSTATE.INPUT;
@@ -483,28 +483,28 @@ namespace DobotConsoleControl
 
             switch (commands[0])
             {
-                case "clearAlarms":
+                case "ClearAlarms":
                     Dobot.ClearAlarms();
                     break;
-                case "checkAlarms":
+                case "CheckAlarms":
                     Dobot.CheckAlarms();
                     break;
-                case "clearQueue":
+                case "ClearQueue":
                     Dobot.ClearQueue();//DobotDll.SetQueuedCmdClear();
                     break;
-                case "startQueue":
+                case "StartQueue":
                     Dobot.StartQueue();// DobotDll.SetQueuedCmdStartExec();
                     break;
-                case "reconnect":
+                case "Reconnect":
                     Dobot.Start();//StartDobot();
                     break;
-                case "help":
+                case "Help":
                     PrgConsole.WriteHelp();
                     break;
                     //case "swStackOne":
                     //    swStackOne();
                     //break;
-                case "stackone":
+                case "StackOne":
                     Dobot.StackOne(ref stackHeight, ref currentLayer);
                     state = PRGSTATE.RUN;
                     Console.Write("\n");
@@ -514,7 +514,7 @@ namespace DobotConsoleControl
                     runProg();
                     break;
                 */
-                case "vac":
+                case "Vac":
                     if (commands[1].Equals("on"))
                         Dobot.Vac(true);
                     else if (commands[1].Equals("off"))
@@ -523,7 +523,7 @@ namespace DobotConsoleControl
                         PrgConsole.invalidCommand();
                     break;
 
-                case "setmode":
+                case "SetMode":
                     switch (commands[1])
                     {
                         case "low":
@@ -568,7 +568,7 @@ namespace DobotConsoleControl
                     vac(false);
                     break;
                     */
-                case "go":
+                case "Go":
                     RobotPoint rPoint = null;
                     switch (commands[2])
                     {
@@ -672,7 +672,7 @@ namespace DobotConsoleControl
                         goHighFromCurrent(heightCheck);
                     break;*/
                     break;
-                case "setlayerdelta":
+                case "SetLayerHeight":
                     double lHeight;
                     if (Double.TryParse(commands[1], out lHeight))
                     {
@@ -684,7 +684,7 @@ namespace DobotConsoleControl
                         PrgConsole.Error(PrgConsole.ERRORS.INVALID_NUMBER);
                     break;
 
-                case "setdwell":
+                case "SetDwell":
                     int dwellTime;
                     if (int.TryParse(commands[1], out dwellTime))
                     {
@@ -696,6 +696,27 @@ namespace DobotConsoleControl
 
                     //dwellTime = int.Parse(commands[1]);
                     //PrgConsole.WriteToConsole($"New dwell time: {dwellTime} ms");
+                    break;
+
+                case "ChangePickZ":
+                    Dobot.ChangePickZ(Double.Parse(commands[1]));
+                    break;
+                case "ChangeBuildZ":
+                    Dobot.ChangeBuildZ(Double.Parse(commands[1]));
+                    break;
+                case "GetCurrentPoint":
+                    Dobot.DisplayCurrentPoint();
+                    break;
+                case "SaveCurrentPoint":
+                    Dobot.SaveCurrentPoint(commands[1]);
+                    break;
+                case "SavePointsToFile":
+                    Dobot.SavePointsToFile();
+                    break;
+
+                case "ResetLayers":
+                    stackHeight = 0;
+                    currentLayer = 0;
                     break;
 
                 case "setpoint":
@@ -715,7 +736,7 @@ namespace DobotConsoleControl
                     DataFile.ReadPoints();
                     break;*/
 
-                case "home":
+                case "Home":
                     Dobot.Home();
                     /*HOMEParams hParams;
                     hParams.x = (float)homePoint.X;

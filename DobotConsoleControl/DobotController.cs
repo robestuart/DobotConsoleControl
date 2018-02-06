@@ -353,8 +353,6 @@ namespace DobotConsoleControl
             DataFile.SavePoints(points);
         }
 
-
-
         public static int StackOne(ref double currentStackHeight, ref int currentLayer)
         {
             GoHighFromCurrent(points[PICK]);//pickPoint);
@@ -398,6 +396,16 @@ namespace DobotConsoleControl
             DobotDll.GetPose(ref pose);
 
             return new RobotPoint(pose);
+        }
+
+        public static void ChangePickZ(double newZ)
+        {
+            points[PICK].Z += newZ;
+        }
+
+        public static void ChangeBuildZ(double newZ)
+        {
+            points[BUILD_BOTTOM].Z += newZ;
         }
 
 
@@ -583,6 +591,12 @@ namespace DobotConsoleControl
             PrgConsole.PointSaved(currentPosition);
         }
 
+        public static void DisplayCurrentPoint()
+        {
+            RobotPoint currentPosition = getCurrentPosition();
+            PrgConsole.WriteInfo(currentPosition.ToString());
+        }
+
         /// <summary>
         /// Adds a goto point to the hardware queue
         /// </summary>
@@ -625,6 +639,11 @@ namespace DobotConsoleControl
 
         #endregion
 
+        public static void SavePointsToFile()
+        {
+            DataFile.SavePoints(points);
+        }
+
         public static int StartQueue()
         {
             DobotDll.SetQueuedCmdStartExec();
@@ -663,7 +682,7 @@ namespace DobotConsoleControl
             List<RobotPoint> robotPoints = new List<RobotPoint>(_points.Values);
 
             XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));//RobotPoint));//(Dictionary<string,RobotPoint>));            
-            using (StreamWriter writer = new StreamWriter(DATA_FILE, false))
+            using (StreamWriter writer = new StreamWriter(DATA_FILE, false))    //currently overwrites file instead of appending
             {
 
                 serializer.Serialize(writer, robotPoints);
@@ -804,9 +823,11 @@ namespace DobotConsoleControl
             return pdbCmd;
         }
 
+        private const string FORMAT_STRING = "{0:000.000}";
+
         public override string ToString()
         {
-            return $"   point:\tname= {Name}\tx= {X}\ty= {Y}\tz= {Z}\tr= {R}";
+            return $"\tpoint:\tname= {string.Format(FORMAT_STRING,Name)}\tx= {string.Format(FORMAT_STRING, X)}\ty= {string.Format(FORMAT_STRING, Y)}\tz= {string.Format(FORMAT_STRING, Z)}\tr= {string.Format(FORMAT_STRING, R)}";
         }
     }
 

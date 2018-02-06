@@ -99,6 +99,7 @@
     <Content Include="msvcr120.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Content Include="OldReadme.txt" />
     <Content Include="Qt5Core.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
