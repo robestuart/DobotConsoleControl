@@ -17,7 +17,7 @@ SavePointsToFile()
 Help()
 Home()
 SetLayerHeight(millimeters)
-SetDwell(milliseconds)
+SetDwell(milliseconds) or SetDwell(ms, ms, ... ms) if you stack beyond defined, it will repeat the last defined
 ChangePickZ(millimeters)
 ChangeBuildZ(millimeters)
 ResetLayers()

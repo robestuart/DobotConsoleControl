@@ -6,6 +6,9 @@ using System.Text;
 using System.Threading;
 using System.Xml.Serialization;
 
+//TODO vector of dwell times
+
+
 namespace DobotConsoleControl
 {
     public static class Dobot
@@ -16,7 +19,8 @@ namespace DobotConsoleControl
         public const string CHILL = "CHILL";
         private const string HOME = "HOME";
 
-        public static int DwellTime { get; set; } = 2000;       //ms default
+        public static int DwellTimeDefault { get; set; } = 2000;       //ms default
+        public static List<int> DwellTimes { get; set; } = new List<int>();
         public static double LayerHeight { get; set; } = 1;     //mm default
         public static double ShortPause { get; set; } = 200;    //ms default
         public static double SafeHeight { get; set; } = 50;     //mm default
@@ -71,6 +75,7 @@ namespace DobotConsoleControl
         /// <returns></returns>
         public static int Start()
         {
+            DwellTimes.Add(DwellTimeDefault);
             points = DataFile.ReadPoints();
             // sets the clearance height at which the robot should move so it doesn't hit any objects
             RobotPoint.SetSafeHeight(SafeHeight);
@@ -297,6 +302,11 @@ namespace DobotConsoleControl
             return alarmStrings.Count>0;
         }
 
+        public static void SetDwellTimes(List<int> _dwellTimes)
+        {
+            DwellTimes = _dwellTimes;
+        }
+
         /// <summary>
         /// Returns the point programmed as "home" in the Dobot firmware.
         /// </summary>
@@ -355,38 +365,47 @@ namespace DobotConsoleControl
 
         public static int StackOne(ref double currentStackHeight, ref int currentLayer)
         {
-            GoHighFromCurrent(points[PICK]);//pickPoint);
-            Vac(true);
-            Wait(ShortPause);
-            RobotPoint stackPoint = (RobotPoint)points[BUILD_BOTTOM].Clone();//placePoint.Clone();
-            stackPoint.Z += currentStackHeight + LayerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
-            //stackPoint.Z = stackHeight;
-            GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
-            Wait(DwellTime);
+                GoHighFromCurrent(points[PICK]);//pickPoint);
+                Vac(true);
+                Wait(ShortPause);
+                RobotPoint stackPoint = (RobotPoint)points[BUILD_BOTTOM].Clone();//placePoint.Clone();
+                stackPoint.Z += currentStackHeight + LayerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
+                                                                  //stackPoint.Z = stackHeight;
+                GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
 
-            RobotPoint smoothEntryPoint = (RobotPoint)points[PICK].Clone();//pickPoint.Clone();
-            smoothEntryPoint.X += 5;
-            smoothEntryPoint.Z += 5;
 
-            GoHigh(stackPoint, smoothEntryPoint);
-            Wait(200);
+                if (DwellTimes.Count > 1){
+                    if (currentLayer < DwellTimes.Count)
+                        Wait(DwellTimes[currentLayer]);
+                    else
+                        Wait(DwellTimes[DwellTimes.Count-1]);         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
+                }
+                else
+                    Wait(DwellTimes[0]); // Wait(DwellTime);
 
-            //RobotPoint smallPickHover = (RobotPoint)pickPoint.Clone();
-            //smoothEntryPoint.Z += 7;
+                RobotPoint smoothEntryPoint = (RobotPoint)points[PICK].Clone();//pickPoint.Clone();
+                smoothEntryPoint.X += 5;
+                smoothEntryPoint.Z += 5;
 
-            //hqGoPoint(smallPickHover);
-            //hqGoPoint(pickPoint);
+                GoHigh(stackPoint, smoothEntryPoint);
+                Wait(200);
 
-            //hqGoHigh(stackPoint, pickPoint);
-            Wait(ShortPause);
-            Vac(false);
-            Wait(200);
-            GoHigh(points[PICK], points[CHILL]);//pickPoint, chillPoint);
-            currentLayer++;//layerCount++;
-            currentStackHeight = currentStackHeight + LayerHeight;
+                //RobotPoint smallPickHover = (RobotPoint)pickPoint.Clone();
+                //smoothEntryPoint.Z += 7;
 
-            //state = PRGSTATE.RUN;
-            //Console.Write("\n");
+                //hqGoPoint(smallPickHover);
+                //hqGoPoint(pickPoint);
+
+                //hqGoHigh(stackPoint, pickPoint);
+                Wait(ShortPause);
+                Vac(false);
+                Wait(200);
+                GoHigh(points[PICK], points[CHILL]);//pickPoint, chillPoint);
+                currentLayer++;//layerCount++;
+                currentStackHeight = currentStackHeight + LayerHeight;
+
+                //state = PRGSTATE.RUN;
+                //Console.Write("\n");
             return 0;
         }
 

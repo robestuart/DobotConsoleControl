@@ -685,7 +685,26 @@ namespace DobotConsoleControl
                     break;
 
                 case "SetDwell":
+
+                    //TODO add code that takes a variable number of commands[1-inf]
                     int dwellTime;
+                    List<int> DwellTimes = new List<int>();
+                    for (int i = 1; i < commands.Count-1; i++)
+                    {
+                        if (int.TryParse(commands[i], out dwellTime))
+                        {
+                            DwellTimes.Add(dwellTime);
+                            //Dobot.setDwellTime(i - 1, dwellTime);
+                            //PrgConsole.SetVariable($"DWELL_TIME[{i-1}]");
+                        }
+                        else
+                            break;
+                    }
+
+                    Dobot.SetDwellTimes(DwellTimes);
+                    PrgConsole.SetVariable("DWELL_TIMES");
+
+                    /*
                     if (int.TryParse(commands[1], out dwellTime))
                     {
                         Dobot.DwellTime = dwellTime;
@@ -693,7 +712,7 @@ namespace DobotConsoleControl
                     }
                     else
                         PrgConsole.Error(PrgConsole.ERRORS.INVALID_NUMBER);
-
+                        */
                     //dwellTime = int.Parse(commands[1]);
                     //PrgConsole.WriteToConsole($"New dwell time: {dwellTime} ms");
                     break;
