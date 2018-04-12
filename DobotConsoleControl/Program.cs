@@ -291,6 +291,7 @@ namespace DobotConsoleControl
 
         //private static Dictionary<string, RobotPoint> points = new Dictionary<string, RobotPoint>();
 
+        private ArduinoComm arduino = new ArduinoComm();
 
         private static RobotPoint heightCheck = new RobotPoint(181.7, 2.77, -35, -10.6148);
         private static RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -58.5127, -10.6148);
@@ -336,7 +337,7 @@ namespace DobotConsoleControl
 
         //private static Queue<RbtAction> pointQ = new Queue<RbtAction>();
 
-        static void Main(string[] args)
+        static void Main(string[] args)            // changed from static
         {
             //TODO read points from XML
             // add all the pre-defined points to the point dictionary
@@ -386,6 +387,8 @@ namespace DobotConsoleControl
                                 PrgConsole.WriteInfo("Queue finsihed execution\n");   //Console.Write("\rQueue finished execution\n");
                                 PrgConsole.StackUpdate(currentLayer, stackHeight);    //PrgConsole.WriteToConsole($"Currently at\theight:  {stackHeight}\tlayer#:  {layerCount}", 2);
                                 Dobot.CheckAlarms();
+
+                                //TODO ArduinoComm.Move(step);
                                 state = PRGSTATE.INPUT;
                             }
                         }
@@ -757,6 +760,7 @@ namespace DobotConsoleControl
 
                 case "Home":
                     Dobot.Home();
+                    //TODO ArduinoComm.Homey();
                     /*HOMEParams hParams;
                     hParams.x = (float)homePoint.X;
                     hParams.y = (float)homePoint.Y;
@@ -790,6 +794,22 @@ namespace DobotConsoleControl
                 /*case "createPoint":
                     createPoint();
                     break;*/
+                case "ArduinoConnect":
+                    ArduinoComm.Connect();
+                    break;
+                case "AHome":
+                    ArduinoComm.Home();
+                    break;
+                case "AMove":
+                    ArduinoComm.Move(2);
+                    break;
+                case "AIsOpen":
+                    ArduinoComm.isOpen();
+                    break;
+                /*case "GetPorts":
+                    PrgConsole.WriteInfo(ArduinoComm.getPorts());                    
+                    break;*/
+
                 default:
                     PrgConsole.invalidCommand();
                     break;
