@@ -13,17 +13,22 @@ namespace DobotConsoleControl
 {
     public static class Dobot
     {
+        private const bool Z_PLATFORM = true;
+
+
         // DEFAULT POINT NAMES
         public const string PICK = "PICK";
         public const string BUILD_BOTTOM = "BUILD_BOTTOM";
         public const string CHILL = "CHILL";
         private const string HOME = "HOME";
+        public const string PRE_PLACE = "PRE_PLACE";
+        public const string TRANSITION = "TRANSITION";
 
         public static int DwellTimeDefault { get; set; } = 2000;       //ms default
         public static List<int> DwellTimes { get; set; } = new List<int>();
         public static double LayerHeight { get; set; } = 1;     //mm default
         public static double ShortPause { get; set; } = 200;    //ms default
-        public static double SafeHeight { get; set; } = 50;     //mm default
+        public static double SafeHeight { get; set; } = 90;     //mm default
 
         // book keeping of the robot
         private static bool isConnected = false;
@@ -345,26 +350,82 @@ namespace DobotConsoleControl
         {
             //RobotPoint heightCheck = new RobotPoint(181.7, 2.77, -35, -10.6148);
             //RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -58.5127, -10.6148);
-            RobotPoint buildPlace = new RobotPoint(BUILD_BOTTOM, 168.2096, 3.2643, -47.5, -10.6148);
-            RobotPoint pickPoint = new RobotPoint(PICK, 167.1955, -147.1283, -58.5127, -10.6148);//(RobotPoint)lithPickup.Clone();
             //RobotPoint pickHigh = new RobotPoint(167.1955, -147.1283, 50, -10.6148);
             //RobotPoint placePoint = (RobotPoint)buildPlace.Clone();
             //private static RobotPoint placeHigh = (RobotPoint)buildPlace.Clone();
             //private static RobotPoint pickPoint = new RobotPoint(228.7848, -96.1451, -20, -22.7647);
             //private static RobotPoint placePoint = new RobotPoint(225.6651, 118.4177, -20, 27.6882);
-            RobotPoint chillPoint = new RobotPoint(CHILL, 28.8, -191.653, 7.206, -81);//new RobotPoint(247.658, 61.7616, 50, 14);
-            RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
 
-            AddPoint(pickPoint);
-            AddPoint(buildPlace);
-            AddPoint(homePoint);
-            AddPoint(chillPoint);
+            if (Z_PLATFORM)
+            {
+                RobotPoint pickPoint = new RobotPoint(PICK, 301, -41, -68.5, 27);
+                RobotPoint transitionPoint = new RobotPoint(TRANSITION, 210, -10, 100.5, 27);
+                RobotPoint prePlace = new RobotPoint(PRE_PLACE, 184, 165, 97, 27);
+                RobotPoint buildPlace = new RobotPoint(BUILD_BOTTOM, 223, 221, 56, 27);
+                
+                RobotPoint chillPoint = new RobotPoint(CHILL, 193.6, 27.4, 100.5, 45);//new RobotPoint(247.658, 61.7616, 50, 14);
+                RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
+                AddPoint(pickPoint);
+                AddPoint(buildPlace);
+                AddPoint(prePlace);
+                AddPoint(homePoint);
+                AddPoint(chillPoint);
+                AddPoint(transitionPoint);
+            } else
+            {// Original points for acrylic platform
+                RobotPoint buildPlace = new RobotPoint(BUILD_BOTTOM, 168.2096, 3.2643, -47.5, -10.6148);
+                RobotPoint pickPoint = new RobotPoint(PICK, 167.1955, -147.1283, -58.5127, -10.6148);//(RobotPoint)lithPickup.Clone();
+                RobotPoint chillPoint = new RobotPoint(CHILL, 28.8, -191.653, 7.206, -81);//new RobotPoint(247.658, 61.7616, 50, 14);
+                RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
+                AddPoint(pickPoint);
+                AddPoint(buildPlace);
+                AddPoint(homePoint);
+                AddPoint(chillPoint);
+            }
+            
 
             DataFile.SavePoints(points);
         }
 
         public static int StackOne(ref double currentStackHeight, ref int currentLayer)
         {
+            if (Z_PLATFORM)
+            {
+                GoHighFromCurrent(points[PICK]);//pickPoint);
+                Vac(true);
+                Wait(ShortPause);
+                //RobotPoint stackPoint = (RobotPoint)points[BUILD_BOTTOM].Clone();//placePoint.Clone();
+                //stackPoint.Z += currentStackHeight + LayerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
+                                                                  //stackPoint.Z = stackHeight;
+                GoPoint(points[PICK].HighPoint());
+                GoPoint(points[TRANSITION].HighPoint());
+                GoPoint(points[PRE_PLACE].HighPoint());
+                GoHigh(points[PRE_PLACE].HighPoint(), points[BUILD_BOTTOM]);
+                //GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
+                if (DwellTimes.Count > 1)
+                {
+                    if (currentLayer < DwellTimes.Count)
+                        Wait(DwellTimes[currentLayer]);
+                    else
+                        Wait(DwellTimes[DwellTimes.Count - 1]);         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
+                }
+                else
+                    Wait(DwellTimes[0]); // Wait(DwellTime);
+
+                GoHigh(points[BUILD_BOTTOM], points[PRE_PLACE].HighPoint());
+
+                ArduinoComm.Move(LayerHeight);
+                RobotPoint depositPoint = (RobotPoint)points[PICK].Clone();
+                depositPoint.Z += 10;
+
+                GoHigh(points[PRE_PLACE].HighPoint(), depositPoint);
+                Wait(ShortPause);
+                Vac(false);
+                GoHigh(points[PICK], points[CHILL]);
+
+            }
+            else
+            {
                 GoHighFromCurrent(points[PICK]);//pickPoint);
                 Vac(true);
                 Wait(ShortPause);
@@ -374,11 +435,12 @@ namespace DobotConsoleControl
                 GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
 
 
-                if (DwellTimes.Count > 1){
+                if (DwellTimes.Count > 1)
+                {
                     if (currentLayer < DwellTimes.Count)
                         Wait(DwellTimes[currentLayer]);
                     else
-                        Wait(DwellTimes[DwellTimes.Count-1]);         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
+                        Wait(DwellTimes[DwellTimes.Count - 1]);         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
                 }
                 else
                     Wait(DwellTimes[0]); // Wait(DwellTime);
@@ -401,11 +463,14 @@ namespace DobotConsoleControl
                 Vac(false);
                 Wait(200);
                 GoHigh(points[PICK], points[CHILL]);//pickPoint, chillPoint);
-                currentLayer++;//layerCount++;
-                currentStackHeight = currentStackHeight + LayerHeight;
-
+                
                 //state = PRGSTATE.RUN;
                 //Console.Write("\n");
+            }
+
+            currentLayer++;//layerCount++;
+            currentStackHeight = currentStackHeight + LayerHeight;
+
             return 0;
         }
 
