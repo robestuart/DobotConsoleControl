@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CryoForgeSettings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <dwellTimes>
+    <double>1000</double>
+  </dwellTimes>
+  <layerHeights>
+    <double>1</double>
+  </layerHeights>
+  <arduinoOffset>1</arduinoOffset>
+  <clearHeight>90</clearHeight>
+</CryoForgeSettings>

@@ -5,6 +5,9 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Xml.Serialization;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
+using System.Configuration;
 
 //TODO vector of dwell times
 
@@ -18,17 +21,20 @@ namespace DobotConsoleControl
 
         // DEFAULT POINT NAMES
         public const string PICK = "PICK";
-        public const string BUILD_BOTTOM = "BUILD_BOTTOM";
+        public const string BUILD = "BUILD";
         public const string CHILL = "CHILL";
         private const string HOME = "HOME";
         public const string PRE_PLACE = "PRE_PLACE";
         public const string TRANSITION = "TRANSITION";
 
-        public static int DwellTimeDefault { get; set; } = 2000;       //ms default
-        public static List<int> DwellTimes { get; set; } = new List<int>();
-        public static double LayerHeight { get; set; } = 1;     //mm default
+        public static double DwellTimeDefault { get; set; } = 2000;       //ms default
+        public static List<double> DwellTimes { get; set; } = new List<double>();
+        private static double DEFAULT_LAYER_HEIGHT { get; set; } = 1;     //mm default
+        public static List<double> LayerHeights { get; set; } = new List<double>();
         public static double ShortPause { get; set; } = 200;    //ms default
         public static double SafeHeight { get; set; } = 90;     //mm default
+        private static Dictionary<string, RobotPoint> points = new Dictionary<string, RobotPoint>();
+
 
         // book keeping of the robot
         private static bool isConnected = false;
@@ -72,7 +78,7 @@ namespace DobotConsoleControl
         //private const float HIGH_MODE = 100;
 
         // keeps track of all the robot points
-        private static Dictionary<string, RobotPoint> points = new Dictionary<string, RobotPoint>();
+        
 
         /// <summary>
         /// Connects to the Dobot, performs pre-operation checks and setup.
@@ -80,10 +86,9 @@ namespace DobotConsoleControl
         /// <returns></returns>
         public static int Start()
         {
-            DwellTimes.Add(DwellTimeDefault);
-            points = DataFile.ReadPoints();
+            //points = FileIO.ReadPoints();
             // sets the clearance height at which the robot should move so it doesn't hit any objects
-            RobotPoint.SetSafeHeight(SafeHeight);
+            //RobotPoint.SetSafeHeight(SafeHeight);
 
             StringBuilder fwType = new StringBuilder(60);
             StringBuilder version = new StringBuilder(60);
@@ -307,7 +312,12 @@ namespace DobotConsoleControl
             return alarmStrings.Count>0;
         }
 
-        public static void SetDwellTimes(List<int> _dwellTimes)
+        public static void SetLayerHeights(List<double> _layerHeights)
+        {
+            LayerHeights = _layerHeights;
+        }
+
+        public static void SetDwellTimes(List<double> _dwellTimes)
         {
             DwellTimes = _dwellTimes;
         }
@@ -332,7 +342,7 @@ namespace DobotConsoleControl
             PrgConsole.WriteInfo("Alarms cleared");
         }
 
-        private static int AddPoint(RobotPoint point)
+        public static int AddPoint(RobotPoint point)
         {
             if (point.Name == "")
             {
@@ -341,7 +351,7 @@ namespace DobotConsoleControl
             }
             else
             {
-                points.Add(point.Name, point);
+                points[point.Name] = point;//points.Add(point.Name, point);
                 return 0;
             }
         }
@@ -361,7 +371,7 @@ namespace DobotConsoleControl
                 RobotPoint pickPoint = new RobotPoint(PICK, 301, -41, -68.5, 27);
                 RobotPoint transitionPoint = new RobotPoint(TRANSITION, 210, -10, 100.5, 27);
                 RobotPoint prePlace = new RobotPoint(PRE_PLACE, 184, 165, 97, 27);
-                RobotPoint buildPlace = new RobotPoint(BUILD_BOTTOM, 223, 221, 56, 27);
+                RobotPoint buildPlace = new RobotPoint(BUILD, 223, 221, 56, 27);
                 
                 RobotPoint chillPoint = new RobotPoint(CHILL, 193.6, 27.4, 100.5, 45);//new RobotPoint(247.658, 61.7616, 50, 14);
                 RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
@@ -373,7 +383,7 @@ namespace DobotConsoleControl
                 AddPoint(transitionPoint);
             } else
             {// Original points for acrylic platform
-                RobotPoint buildPlace = new RobotPoint(BUILD_BOTTOM, 168.2096, 3.2643, -47.5, -10.6148);
+                RobotPoint buildPlace = new RobotPoint(BUILD, 168.2096, 3.2643, -47.5, -10.6148);
                 RobotPoint pickPoint = new RobotPoint(PICK, 167.1955, -147.1283, -58.5127, -10.6148);//(RobotPoint)lithPickup.Clone();
                 RobotPoint chillPoint = new RobotPoint(CHILL, 28.8, -191.653, 7.206, -81);//new RobotPoint(247.658, 61.7616, 50, 14);
                 RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
@@ -384,53 +394,78 @@ namespace DobotConsoleControl
             }
             
 
-            DataFile.SavePoints(points);
+            FileIO.SavePoints(points);
         }
 
         public static int StackOne(ref double currentStackHeight, ref int currentLayer)
         {
+            double dwellTime = getDwellTime(currentLayer);
+            double layerHeight = getLayerHeight(currentLayer);
             if (Z_PLATFORM)
             {
+                ArduinoComm.Move(layerHeight);
+
                 GoHighFromCurrent(points[PICK]);//pickPoint);
                 Vac(true);
                 Wait(ShortPause);
                 //RobotPoint stackPoint = (RobotPoint)points[BUILD_BOTTOM].Clone();//placePoint.Clone();
                 //stackPoint.Z += currentStackHeight + LayerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
-                                                                  //stackPoint.Z = stackHeight;
-                GoPoint(points[PICK].HighPoint());
-                GoPoint(points[TRANSITION].HighPoint());
-                GoPoint(points[PRE_PLACE].HighPoint());
-                GoHigh(points[PRE_PLACE].HighPoint(), points[BUILD_BOTTOM]);
-                //GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
-                if (DwellTimes.Count > 1)
+                //stackPoint.Z = stackHeight;
+                if (true)
                 {
-                    if (currentLayer < DwellTimes.Count)
-                        Wait(DwellTimes[currentLayer]);
-                    else
-                        Wait(DwellTimes[DwellTimes.Count - 1]);         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
+                    RobotPoint pickClear = (RobotPoint)points[PICK].Clone();
+                    pickClear.Z += 20;
+                    GoPoint(pickClear);
+                    GoPoint(points[TRANSITION]);
+
+                    RobotPoint build = (RobotPoint)points[BUILD].Clone();
+                    build.R = points[PICK].R;                               //makes sure rotation is same as pick since it's hard to keep that same when manually defining points
+                    RobotPoint placeClear = (RobotPoint) build.Clone();
+                    placeClear.Z = points[TRANSITION].Z;
+                    GoPoint(placeClear);
+                    GoPoint(build);//points[BUILD]);
+                    Wait(dwellTime);
+                    GoPoint(placeClear);
+                    GoPoint(points[TRANSITION]);
+                    GoPoint(pickClear);
+                    Vac(false);
+                    GoPoint(points[CHILL]);
                 }
                 else
-                    Wait(DwellTimes[0]); // Wait(DwellTime);
+                {
 
-                GoHigh(points[BUILD_BOTTOM], points[PRE_PLACE].HighPoint());
+                    GoPoint(points[PICK].HighPoint());
+                    GoPoint(points[TRANSITION].HighPoint());
+                    GoPoint(points[PRE_PLACE].HighPoint());
+                    GoHigh(points[PRE_PLACE].HighPoint(), points[BUILD]);
+                    //GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
 
-                ArduinoComm.Move(LayerHeight);
-                RobotPoint depositPoint = (RobotPoint)points[PICK].Clone();
-                depositPoint.Z += 10;
+                    //double dwellTime = getDwellTime(currentLayer);
+                    Wait(dwellTime);
 
-                GoHigh(points[PRE_PLACE].HighPoint(), depositPoint);
-                Wait(ShortPause);
-                Vac(false);
-                GoHigh(points[PICK], points[CHILL]);
 
+                    GoHigh(points[BUILD], points[PRE_PLACE].HighPoint());
+
+
+                    //double layerHeight = getLayerHeight(currentLayer);
+                    //ArduinoComm.Move(layerHeight);
+
+                    RobotPoint depositPoint = (RobotPoint)points[PICK].Clone();
+                    depositPoint.Z += 10;
+
+                    GoHigh(points[PRE_PLACE].HighPoint(), depositPoint);
+                    Wait(ShortPause);
+                    Vac(false);
+                    GoHigh(points[PICK], points[CHILL]);
+                }
             }
             else
             {
                 GoHighFromCurrent(points[PICK]);//pickPoint);
                 Vac(true);
                 Wait(ShortPause);
-                RobotPoint stackPoint = (RobotPoint)points[BUILD_BOTTOM].Clone();//placePoint.Clone();
-                stackPoint.Z += currentStackHeight + LayerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
+                RobotPoint stackPoint = (RobotPoint)points[BUILD].Clone();//placePoint.Clone();
+                stackPoint.Z += currentStackHeight + layerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
                                                                   //stackPoint.Z = stackHeight;
                 GoHigh(points[PICK], stackPoint);//pickPoint, stackPoint);
 
@@ -469,9 +504,41 @@ namespace DobotConsoleControl
             }
 
             currentLayer++;//layerCount++;
-            currentStackHeight = currentStackHeight + LayerHeight;
+            currentStackHeight = currentStackHeight + layerHeight;
 
             return 0;
+        }
+
+        private static double getDwellTime(int currentLayer)
+        {
+            double dwellTime = DwellTimeDefault;
+            if (DwellTimes.Count > 1)
+            {
+                if (currentLayer < DwellTimes.Count)
+                    dwellTime = DwellTimes[currentLayer];
+                else
+                    dwellTime = DwellTimes[DwellTimes.Count - 1];         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
+            }
+            else
+                dwellTime = DwellTimes[0]; // Wait(DwellTime);
+
+            return dwellTime;
+        }
+
+        private static double getLayerHeight(int currentLayer)
+        {
+            double layerHeight = DEFAULT_LAYER_HEIGHT;
+            if (LayerHeights.Count > 1)
+            {
+                if (currentLayer < LayerHeights.Count)
+                    layerHeight = LayerHeights[currentLayer];
+                else
+                    layerHeight = LayerHeights[LayerHeights.Count - 1];         //if you have exceeded the defined dwell times just repeat the last defined one indefinitely
+            }
+            else
+                layerHeight = LayerHeights[0]; // Wait(DwellTime);
+
+            return layerHeight;
         }
 
         private static RobotPoint getCurrentPosition()
@@ -489,7 +556,7 @@ namespace DobotConsoleControl
 
         public static void ChangeBuildZ(double newZ)
         {
-            points[BUILD_BOTTOM].Z += newZ;
+            points[BUILD].Z += newZ;
         }
 
 
@@ -667,11 +734,12 @@ namespace DobotConsoleControl
         /// Gets the current position and saves it to the points dictionary.
         /// </summary>
         /// <param name="name"></param>
-        public static void SaveCurrentPoint(string name)
+        public static void StoreCurrentPoint(string name)
         {
             RobotPoint currentPosition = getCurrentPosition();
             currentPosition.Name = name;
-            points.Add(name, currentPosition);
+            points[name] = currentPosition;
+            //points.Add(name, currentPosition);
             PrgConsole.PointSaved(currentPosition);
         }
 
@@ -689,14 +757,6 @@ namespace DobotConsoleControl
         /// <returns></returns>
         private static UInt64 hardQPTP(PTPMode style, RobotPoint point)//, double x, double y, double z, double r)
         {
-            /*PTPCmd pdbCmd;
-
-            pdbCmd.ptpMode = (byte)style;
-            pdbCmd.x = (float)x;
-            pdbCmd.y = (float)y;
-            pdbCmd.z = (float)z;
-            pdbCmd.rHead = (float)r;
-            */
             PTPCmd pdbCmd = point.PdbCmd(style);
 
             // communication thing, keeps trying to tell it to do a command until it takes
@@ -707,25 +767,26 @@ namespace DobotConsoleControl
                 if (ret == 0)
                     break;
             }
-            //string format = "+000.000;-000.000";//;(0)";
-
-            //string xstr = string.Format("{000:0.00}", x);
-            //string ystr = string.Format("{000:0.00}", y);
-            //string zstr = string.Format("{000:0.00}", z);
-            //string rstr = string.Format("{000:0.00}", r);
 
             PrgConsole.AddedToQueue(point);
-            //PrgConsole.WriteToConsole($"added to queue: goto point \t\tX= {PrgConsole.NumString(point.X)}\tY= {PrgConsole.NumString(point.Y)}\tZ= {PrgConsole.NumString(point.Z)}\tR= {PrgConsole.NumString(point.R)}", 1);
-            //string cnslString = "added to queue: goto point \t\tX="+ string.Format("{0:0.00}", x)+"\tY ={0:0.000}\tZ={0.000}\tR={0.000}",x,y,z,r);
-            //WriteToConsole(cnslString, 1);
             return lastCmdNumber;
         }
 
         #endregion
 
+        public static List<RobotPoint> GetPoints()
+        {
+            return new List<RobotPoint>(points.Values);
+        }
+
+        public static void SavePointsToFile(string name)
+        {
+            FileIO.SavePoints(name, points);
+        }
+
         public static void SavePointsToFile()
         {
-            DataFile.SavePoints(points);
+            FileIO.SavePoints(points);
         }
 
         public static int StartQueue()
@@ -752,87 +813,12 @@ namespace DobotConsoleControl
         }
     }
 
-    public static class DataFile
-    {
-        private const string DATA_FILE = "Data.xml";
-
-
-        /// <summary>
-        /// Saves the supplied point to the XML file
-        /// </summary>
-        /// <param name="rPoint"></param>
-        public static void SavePoints(Dictionary<string,RobotPoint> _points)
-        {
-            List<RobotPoint> robotPoints = new List<RobotPoint>(_points.Values);
-
-            XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));//RobotPoint));//(Dictionary<string,RobotPoint>));            
-            using (StreamWriter writer = new StreamWriter(DATA_FILE, false))    //currently overwrites file instead of appending
-            {
-
-                serializer.Serialize(writer, robotPoints);
-                //foreach (KeyValuePair<string, RobotPoint> entry in points) { 
-                //    serializer.Serialize(writer, entry.Value);
-                //}
-                writer.Close();
-            }
-        }
-
-        /// <summary>
-        /// Reads all points from the XML file and loads them into memory
-        /// </summary>
-        public static Dictionary<string,RobotPoint> ReadPoints()
-        {
-            if (!File.Exists(DATA_FILE))
-                Dobot.SeedPoints();
-            List<RobotPoint> pointList = new List<RobotPoint>();
-            //Dictionary<string, RobotPoint> pointList = new Dictionary<string, RobotPoint>();
-            XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));//typeof(Dictionary<string,RobotPoint>));
-
-            // if the document has unknown nodes handle with UnknownNode and UnknownAttribute events.
-            serializer.UnknownNode += new XmlNodeEventHandler(serializer_UnknownNode);
-            serializer.UnknownAttribute += new XmlAttributeEventHandler(serializer_UnknownAttribute);
-
-            Dictionary<string, RobotPoint> points = new Dictionary<string, RobotPoint>();
-            //RobotPoint point;
-            using (StreamReader sr = new StreamReader(DATA_FILE, false))
-            {
-                pointList = (List<RobotPoint>)serializer.Deserialize(sr);
-                foreach (RobotPoint rp in pointList)
-                {
-                    points.Add(rp.Name, rp);
-                }
-                //point = (RobotPoint)serializer.Deserialize(sr);
-                sr.Close();
-            }
-
-            //FileStream fs = new FileStream(DATA_FILE, FileMode.Open);
-            //RobotPoint point;
-            //point = (RobotPoint)serializer.Deserialize(fs);
-
-            return points;
-        }
-
-        //TODO change this
-        private static void serializer_UnknownNode(object sender, XmlNodeEventArgs e)
-        {
-            Console.WriteLine("Unknown Node:" + e.Name + "\t" + e.Text);
-        }
-
-        //TODO change this
-        private static void serializer_UnknownAttribute(object sender, XmlAttributeEventArgs e)
-        {
-            System.Xml.XmlAttribute attr = e.Attr;
-            Console.WriteLine("Unknown attribute " +
-            attr.Name + "='" + attr.Value + "'");
-        }
-
-    }
-
     [Serializable]
+    [DataContract]
     public class RobotPoint : ICloneable
     {
-        [NonSerialized]
-        private static double safeHeight = 999; //{ get; set; }
+        //[NonSerialized]
+        public static double SafeHeight { get; set; } = 999; //{ get; set; }
         [NonSerialized]
         private static bool safeSet = false;
         public static bool IsSafeSet
@@ -849,14 +835,19 @@ namespace DobotConsoleControl
 
         public static void SetSafeHeight(double _safeHeight)
         {
-            safeHeight = _safeHeight;
+            SafeHeight = _safeHeight;
             IsSafeSet = true;
         }
 
+        [DataMember]
         public string Name { get; set; }
+        [DataMember]
         public double X { get; set; }
+        [DataMember]
         public double Y { get; set; }
+        [DataMember]
         public double Z { get; set; }
+        [DataMember]
         public double R { get; set; }
 
         public RobotPoint()
@@ -892,7 +883,7 @@ namespace DobotConsoleControl
             else
             {
                 RobotPoint newPoint = (RobotPoint)this.Clone();
-                newPoint.Z = safeHeight;
+                newPoint.Z = SafeHeight;
                 return newPoint;
             }
         }

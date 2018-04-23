@@ -6,6 +6,7 @@ using System.Text;
 using System.Management;
 using System.Threading;
 
+
 namespace DobotConsoleControl
 {
     public class ArduinoComm
@@ -31,6 +32,8 @@ namespace DobotConsoleControl
         private const string ACK = "00";
         private const string ERROR = "01";
         private const string MOVE_FINISH = "000";
+
+        public static double zInit { get; set; } = 0;
         
         public static bool Connect()
         {
@@ -45,11 +48,11 @@ namespace DobotConsoleControl
                         string caption = (string)bObj["Caption"];
                         List<string> splitString = new List<string>(caption.Split(' '));
                         string first = splitString[0].Trim();
-                        Console.WriteLine(first);
+                        //Console.WriteLine(first);
                         if (first.Contains("Arduino"))//splitString[0].Equals("Arduino"))
                         {
                             _portName = (string) bObj["DeviceID"];
-                            Console.WriteLine("SEND IT!!!");
+                            //Console.WriteLine("SEND IT!!!");
                         }
                     }
                 }
@@ -114,7 +117,12 @@ namespace DobotConsoleControl
 
         static public bool Home()
         {
-            return SendString("1,", true);
+            SendString("1,", true);
+            // Currently it just waits 2 seconds until homing procedure is done.
+            // TODO implement a queue that waits for ack and then executes the next command like moving to the start position
+            Thread.Sleep(2000);
+            Move(zInit);
+            return true;
         }
 
         static public bool Move(double pos)
@@ -130,7 +138,7 @@ namespace DobotConsoleControl
 
                 _dataHandler = false;
                 _serialPort.WriteLine(msg);
-                Console.WriteLine(msg);
+                //Console.WriteLine(msg);
                 _moving = moving;
                 return true;// WaitForAck();
             }
@@ -149,7 +157,7 @@ namespace DobotConsoleControl
             {
                 case ACK:
                     ack = true;
-                    Console.WriteLine("Acknowledge received");
+                    //Console.WriteLine("Acknowledge received");
                     break;
                 case ERROR:
                     Console.WriteLine("Communication error: Acknowledge not received.");
