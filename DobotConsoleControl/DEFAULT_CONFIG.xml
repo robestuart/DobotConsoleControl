@@ -6,6 +6,6 @@
   <layerHeights>
     <double>1</double>
   </layerHeights>
-  <arduinoOffset>1</arduinoOffset>
+  <arduinoOffset>10</arduinoOffset>
   <clearHeight>90</clearHeight>
 </CryoForgeSettings>

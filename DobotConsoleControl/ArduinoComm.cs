@@ -34,7 +34,18 @@ namespace DobotConsoleControl
         private const string MOVE_FINISH = "000";
 
         public static double zInit { get; set; } = 0;
-        
+
+        //
+        //queue command
+        // pop from queue run command
+        // set running to true
+        // if receive dataReceived move finished
+        // set running to false
+        // call run command
+
+
+        private static Queue<ArduinoCommand> commandQueue = new Queue<ArduinoCommand>();
+
         public static bool Connect()
         {
             if (_portName == "")
@@ -92,13 +103,14 @@ namespace DobotConsoleControl
             {
                 indata = sp.ReadLine();
                 string[] data = indata.Split(',');
-                Console.WriteLine(data[0]);
+                //Console.WriteLine(data[0]);
                 switch (data[0])
                 {
                     case MOVE_FINISH:
                         Console.WriteLine("MOVE FINISHED!");
                         Console.WriteLine(_serialPort.BytesToRead);
                         _moving = false;
+                        runQueue();
                         break;
 
                     default:
@@ -117,17 +129,64 @@ namespace DobotConsoleControl
 
         static public bool Home()
         {
-            SendString("1,", true);
+            ArduinoCommand ac = new ArduinoCommand
+            {
+                type = ArduinoCommand.CommandType.HOME,
+                param2 = 0
+            };
+
+            enqueueCmd(ac); //commandQueue.Enqueue(ac);
+            Move(zInit);
+
+            //SendString("1,", true);
             // Currently it just waits 2 seconds until homing procedure is done.
             // TODO implement a queue that waits for ack and then executes the next command like moving to the start position
-            Thread.Sleep(2000);
-            Move(zInit);
+            //Thread.Sleep(2000);
+
             return true;
+        }
+
+        static private void runQueue()
+        {
+            if (commandQueue.Count > 0 && _moving == false)
+            {
+                ArduinoCommand ac = commandQueue.Dequeue();
+
+                switch (ac.type)
+                {
+                    case ArduinoCommand.CommandType.HOME:
+                        SendString("1,", true);
+                        break;
+                    case ArduinoCommand.CommandType.MOVE:
+                        SendString("2," + ac.param2 + ",", true);
+                        break;
+                    case ArduinoCommand.CommandType.READ_HEIGHT:
+
+                        break;
+                }
+            }
+        }
+
+        static private void enqueueCmd(ArduinoCommand cmd)
+        {
+            commandQueue.Enqueue(cmd);
+            runQueue();
         }
 
         static public bool Move(double pos)
         {
-            return SendString("2," + pos + ",", true);
+            ArduinoCommand ac = new ArduinoCommand
+            {
+                type = ArduinoCommand.CommandType.MOVE,
+                param2 = pos
+            };
+
+            enqueueCmd(ac);
+
+
+
+            //Console.WriteLine($"Moving to {pos}");
+            return true;// SendString("2," + pos + ",", true);
         }
 
         static private bool SendString(string msg, bool moving)
@@ -173,5 +232,12 @@ namespace DobotConsoleControl
             return ack;
         }
 
+    }
+
+    struct ArduinoCommand
+    {
+        public enum CommandType { HOME, MOVE, READ_HEIGHT }
+        public CommandType type;
+        public double param2;
     }
 }

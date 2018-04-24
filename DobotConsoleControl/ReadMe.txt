@@ -8,27 +8,43 @@ StackOne()
 Vac(on|off)
 SetMode(low|med|high)
 
-Go(x|y|z|r, number)
-Go(direct|high|hover, named_point)
 
-ReadCurrentPoint()
-StoreCurrentPoint(name)
-
-SavePoints(fileName)
-LoadPoints(fileName)
-
-SaveConfig(fileName)
-LoadConfig(fileName)
 
 --- these should be the only commands you really need ---
 Help()
 Home()
+
 SetLayerHeight(millimeters) or SetLayerHeight(mm, mm, ... mm) if you stack beyond defined it will repeat the last defined
 SetDwell(milliseconds) or SetDwell(ms, ms, ... ms) if you stack beyond defined, it will repeat the last defined
-ChangePickZ(millimeters)
-ChangeBuildZ(millimeters)
+SetSafeHeight(height)		safe clearance height for robot
+SetArduinoHome(offset)		offset from limit switch for z platform to home to
+
+AMove(z)								move z platform
+Go(x|y|z|r, number)						incremental movement along an axis
+Go(direct|high|hover, named_point)		absolute movement to pre-defined points
+
+ReadCurrentPoint()
+StoreCurrentPoint(name)
+
+ChangePickZ(millimeters)	easy tuning of pick z height
+ChangeBuildZ(millimeters)	easy tuning of build z height
+
 ResetLayers()
 StackOne()
+
+SaveConfig(name)
+LoadConfig(name)
+ListConfig
+
+SavePoints(name)
+LoadPoints(name)
+ListPoints
+
+points names:
+	PICK
+	PLACE
+	TRANSITION
+	CHILL
 
 *************************************************************************************
 
@@ -40,23 +56,9 @@ If you want to change any defined points:
 	make small variations in the robot arm placement using:
 		Go(x,00.000) or Go(y, 0.0000) or Go(z, 0.00) or Go(r, 00.000)
 	Save the point to RAM:
-		SaveCurrentPoint(PointName)
+		StoreCurrentPoint(PointName)
 	Save the points to the xml file:
-		SavePoints(filename) or SavePoints() will save them
+		SavePoints(filename) or SavePoints() will save to default file
 
 Check on point positions by:
 	Go(high, PointName)
-
-List saved points:
-	ListPoints()
-
-SaveConfig
-LoadConfig
-
-SavePoints
-LoadPoints
-
-PICK
-PLACE
-TRANSITION
-CHILL
