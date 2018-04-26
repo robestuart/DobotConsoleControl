@@ -1,0 +1,8 @@
+﻿-add list for step height similar to the way you did it with the time intervals
+
+-home z-platform when you home dobot
+
+-after dobot commands have completed in RUN state machine
+	drop z-height of platform
+
+-add method to bring z back to 0 at the end? or maybe do that manually

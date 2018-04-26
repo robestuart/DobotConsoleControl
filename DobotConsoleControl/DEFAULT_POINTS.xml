@@ -37,9 +37,9 @@
   </RobotPoint>
   <RobotPoint>
     <Name>TRANSITION</Name>
-    <X>210</X>
-    <Y>-10</Y>
-    <Z>100.5</Z>
-    <R>27</R>
+    <X>182</X>
+    <Y>98.718</Y>
+    <Z>93.7</Z>
+    <R>33.1</R>
   </RobotPoint>
 </ArrayOfRobotPoint>

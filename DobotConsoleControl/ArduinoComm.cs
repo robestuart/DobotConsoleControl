@@ -57,6 +57,7 @@ namespace DobotConsoleControl
                     foreach (ManagementBaseObject bObj in ports)
                     {
                         string caption = (string)bObj["Caption"];
+                        //Console.WriteLine(caption);
                         List<string> splitString = new List<string>(caption.Split(' '));
                         string first = splitString[0].Trim();
                         //Console.WriteLine(first);
@@ -107,8 +108,8 @@ namespace DobotConsoleControl
                 switch (data[0])
                 {
                     case MOVE_FINISH:
-                        Console.WriteLine("MOVE FINISHED!");
-                        Console.WriteLine(_serialPort.BytesToRead);
+                        //Console.WriteLine("MOVE FINISHED!");
+                        //Console.WriteLine(_serialPort.BytesToRead);
                         _moving = false;
                         runQueue();
                         break;

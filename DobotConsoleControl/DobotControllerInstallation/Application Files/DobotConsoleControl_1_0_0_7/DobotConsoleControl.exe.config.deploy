@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+<configSections>
+    <sectionGroup name="applicationSettings" type="System.Configuration.ApplicationSettingsGroup, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" >
+        <section name="DobotConsoleControl.Properties.Settings" type="System.Configuration.ClientSettingsSection, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" requirePermission="false" />
+        <section name="DobotConsoleControl.Properties.Main" type="System.Configuration.ClientSettingsSection, System, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" requirePermission="false" />
+    </sectionGroup>
+</configSections>
+<startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.0"/></startup><applicationSettings>
+        <DobotConsoleControl.Properties.Settings>
+            <setting name="DwellTimes" serializeAs="String">
+                <value />
+            </setting>
+            <setting name="LayerHeights" serializeAs="String">
+                <value />
+            </setting>
+            <setting name="ArduinoHomeOffset" serializeAs="String">
+                <value>0</value>
+            </setting>
+            <setting name="ClearHeight" serializeAs="String">
+                <value>0</value>
+            </setting>
+        </DobotConsoleControl.Properties.Settings>
+        <DobotConsoleControl.Properties.Main>
+            <setting name="DwellTimes" serializeAs="String">
+                <value />
+            </setting>
+            <setting name="ArduinoHomeOffset" serializeAs="String">
+                <value />
+            </setting>
+            <setting name="Points" serializeAs="String">
+                <value />
+            </setting>
+            <setting name="LayerHeights" serializeAs="String">
+                <value />
+            </setting>
+            <setting name="SafeHeight" serializeAs="String">
+                <value />
+            </setting>
+        </DobotConsoleControl.Properties.Main>
+    </applicationSettings>
+</configuration>
