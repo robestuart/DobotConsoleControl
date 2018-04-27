@@ -358,34 +358,25 @@ namespace DobotConsoleControl
 
         public static void SeedPoints()
         {
-            //RobotPoint heightCheck = new RobotPoint(181.7, 2.77, -35, -10.6148);
-            //RobotPoint lithPickup = new RobotPoint(167.1955, -147.1283, -58.5127, -10.6148);
-            //RobotPoint pickHigh = new RobotPoint(167.1955, -147.1283, 50, -10.6148);
-            //RobotPoint placePoint = (RobotPoint)buildPlace.Clone();
-            //private static RobotPoint placeHigh = (RobotPoint)buildPlace.Clone();
-            //private static RobotPoint pickPoint = new RobotPoint(228.7848, -96.1451, -20, -22.7647);
-            //private static RobotPoint placePoint = new RobotPoint(225.6651, 118.4177, -20, 27.6882);
 
             if (Z_PLATFORM)
             {
                 RobotPoint pickPoint = new RobotPoint(PICK, 301, -41, -68.5, 27);
-                RobotPoint transitionPoint = new RobotPoint(TRANSITION, 210, -10, 100.5, 27);
-                RobotPoint prePlace = new RobotPoint(PRE_PLACE, 184, 165, 97, 27);
-                RobotPoint buildPlace = new RobotPoint(BUILD, 223, 221, 56, 27);
+                RobotPoint transitionPoint = new RobotPoint(TRANSITION, 190, 96.4, 100.5, 27);
+                RobotPoint buildPlace = new RobotPoint(BUILD, 203, 218.5, 56.7, 27);
                 
-                RobotPoint chillPoint = new RobotPoint(CHILL, 193.6, 27.4, 100.5, 45);//new RobotPoint(247.658, 61.7616, 50, 14);
+                RobotPoint chillPoint = new RobotPoint(CHILL, 193.6, 27.4, 100.5, 45);
                 RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
                 AddPoint(pickPoint);
                 AddPoint(buildPlace);
-                AddPoint(prePlace);
                 AddPoint(homePoint);
                 AddPoint(chillPoint);
                 AddPoint(transitionPoint);
             } else
             {// Original points for acrylic platform
                 RobotPoint buildPlace = new RobotPoint(BUILD, 168.2096, 3.2643, -47.5, -10.6148);
-                RobotPoint pickPoint = new RobotPoint(PICK, 167.1955, -147.1283, -58.5127, -10.6148);//(RobotPoint)lithPickup.Clone();
-                RobotPoint chillPoint = new RobotPoint(CHILL, 28.8, -191.653, 7.206, -81);//new RobotPoint(247.658, 61.7616, 50, 14);
+                RobotPoint pickPoint = new RobotPoint(PICK, 167.1955, -147.1283, -58.5127, -10.6148);
+                RobotPoint chillPoint = new RobotPoint(CHILL, 28.8, -191.653, 7.206, -81);
                 RobotPoint homePoint = new RobotPoint(HOME, 250, 0, 0, 0);
                 AddPoint(pickPoint);
                 AddPoint(buildPlace);
@@ -408,9 +399,7 @@ namespace DobotConsoleControl
                 GoHighFromCurrent(points[PICK]);//pickPoint);
                 Vac(true);
                 Wait(ShortPause);
-                //RobotPoint stackPoint = (RobotPoint)points[BUILD_BOTTOM].Clone();//placePoint.Clone();
-                //stackPoint.Z += currentStackHeight + LayerHeight; //stackHeight = stackPoint.Z + layerCount * LayerHeight;
-                //stackPoint.Z = stackHeight;
+                
                 if (true)
                 {
                     RobotPoint pickClear = (RobotPoint)points[PICK].Clone();

@@ -35,14 +35,6 @@ namespace DobotConsoleControl
 
         public static double zInit { get; set; } = 0;
 
-        //
-        //queue command
-        // pop from queue run command
-        // set running to true
-        // if receive dataReceived move finished
-        // set running to false
-        // call run command
-
 
         private static Queue<ArduinoCommand> commandQueue = new Queue<ArduinoCommand>();
 
@@ -151,14 +143,7 @@ namespace DobotConsoleControl
                 param2 = 0
             };
 
-            enqueueCmd(ac); //commandQueue.Enqueue(ac);
-            //Move(zInit);
-
-            //SendString("1,", true);
-            // Currently it just waits 2 seconds until homing procedure is done.
-            // TODO implement a queue that waits for ack and then executes the next command like moving to the start position
-            //Thread.Sleep(2000);
-
+            enqueueCmd(ac); 
             return true;
         }
 

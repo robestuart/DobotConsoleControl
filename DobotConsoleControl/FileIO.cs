@@ -10,7 +10,6 @@ namespace DobotConsoleControl
     [Serializable]
     public struct CryoForgeSettings
     {
-        //public List<RobotPoint> points;
         public List<double> dwellTimes;
         public List<double> layerHeights;
         public double arduinoOffset;
@@ -58,7 +57,7 @@ namespace DobotConsoleControl
 
             string filePath = Path.Combine(appFolder, name + ".xml");
 
-            using (StreamWriter sw = new StreamWriter(filePath, false))//name + ".xml", false))
+            using (StreamWriter sw = new StreamWriter(filePath, false))
             {
                 XmlSerializer xs = new XmlSerializer(typeof(CryoForgeSettings));
                 xs.Serialize(sw, cf);
@@ -114,7 +113,7 @@ namespace DobotConsoleControl
 
             List<RobotPoint> robotPoints = new List<RobotPoint>(_points.Values);
 
-            XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));//RobotPoint));//(Dictionary<string,RobotPoint>));            
+            XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));            
             using (StreamWriter writer = new StreamWriter(filePath, false))    //currently overwrites file instead of appending
             {
 
@@ -141,8 +140,8 @@ namespace DobotConsoleControl
             if (!File.Exists(filePath))
                 Dobot.SeedPoints();
             List<RobotPoint> pointList = new List<RobotPoint>();
-            //Dictionary<string, RobotPoint> pointList = new Dictionary<string, RobotPoint>();
-            XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));//typeof(Dictionary<string,RobotPoint>));
+
+            XmlSerializer serializer = new XmlSerializer(typeof(List<RobotPoint>));
 
             // if the document has unknown nodes handle with UnknownNode and UnknownAttribute events.
             serializer.UnknownNode += new XmlNodeEventHandler(serializer_UnknownNode);
@@ -155,17 +154,12 @@ namespace DobotConsoleControl
                 pointList = (List<RobotPoint>)serializer.Deserialize(sr);
                 foreach (RobotPoint rp in pointList)
                 {
-                    points[rp.Name] = rp;//.Add(rp.Name, rp);
+                    points[rp.Name] = rp;
                     Dobot.AddPoint(rp);
                 }
-                //point = (RobotPoint)serializer.Deserialize(sr);
+                
                 sr.Close();
             }
-
-            //FileStream fs = new FileStream(DATA_FILE, FileMode.Open);
-            //RobotPoint point;
-            //point = (RobotPoint)serializer.Deserialize(fs);
-
 
             return points;
         }

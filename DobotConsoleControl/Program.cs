@@ -548,13 +548,7 @@ namespace DobotConsoleControl
                         changePoint(ref placePoint, Double.Parse(commands[2]), Double.Parse(commands[3]), Double.Parse(commands[4]), Double.Parse(commands[5]));
                     else if (commands[1].Equals("home"))
                         changePoint(ref homePoint, Double.Parse(commands[2]), Double.Parse(commands[3]), Double.Parse(commands[4]), Double.Parse(commands[5]));
-                    break;
-
-                //case "SeedPoints":
-                //    Dobot.SeedPoints();
-                //    break;
-
-                
+                    break;                
 
                 case "Home":
                     Dobot.Home();
