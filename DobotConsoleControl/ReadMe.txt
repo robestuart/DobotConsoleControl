@@ -30,6 +30,7 @@ ChangePickZ(millimeters)	easy tuning of pick z height
 ChangeBuildZ(millimeters)	easy tuning of build z height
 
 ResetLayers()
+LayerStatus()
 StackOne()
 
 SaveConfig(name)

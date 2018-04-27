@@ -9,9 +9,9 @@
   </RobotPoint>
   <RobotPoint>
     <Name>BUILD</Name>
-    <X>223</X>
-    <Y>221</Y>
-    <Z>56</Z>
+    <X>203.86</X>
+    <Y>218.5</Y>
+    <Z>56.7</Z>
     <R>27</R>
   </RobotPoint>
   <RobotPoint>
@@ -37,9 +37,9 @@
   </RobotPoint>
   <RobotPoint>
     <Name>TRANSITION</Name>
-    <X>182</X>
-    <Y>98.718</Y>
-    <Z>93.7</Z>
-    <R>33.1</R>
+    <X>190</X>
+    <Y>96.4</Y>
+    <Z>100.5</Z>
+    <R>27</R>
   </RobotPoint>
 </ArrayOfRobotPoint>

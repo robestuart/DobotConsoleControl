@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfRobotPoint xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <RobotPoint>
+    <Name>PICK</Name>
+    <X>301</X>
+    <Y>-41</Y>
+    <Z>-68.5</Z>
+    <R>27</R>
+  </RobotPoint>
+  <RobotPoint>
+    <Name>BUILD</Name>
+    <X>203.86</X>
+    <Y>218.5</Y>
+    <Z>56.7</Z>
+    <R>27</R>
+  </RobotPoint>
+  <RobotPoint>
+    <Name>PRE_PLACE</Name>
+    <X>184</X>
+    <Y>165</Y>
+    <Z>97</Z>
+    <R>27</R>
+  </RobotPoint>
+  <RobotPoint>
+    <Name>HOME</Name>
+    <X>250</X>
+    <Y>0</Y>
+    <Z>0</Z>
+    <R>0</R>
+  </RobotPoint>
+  <RobotPoint>
+    <Name>CHILL</Name>
+    <X>193.6</X>
+    <Y>27.4</Y>
+    <Z>100.5</Z>
+    <R>45</R>
+  </RobotPoint>
+  <RobotPoint>
+    <Name>TRANSITION</Name>
+    <X>190</X>
+    <Y>96.4</Y>
+    <Z>100.5</Z>
+    <R>27</R>
+  </RobotPoint>
+</ArrayOfRobotPoint>

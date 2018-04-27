@@ -16,9 +16,6 @@ using System.Reflection;
 
 namespace DobotConsoleControl
 {
-    // Some code was used or referenced from these websites:
-    // https://www.codeproject.com/Articles/816301/Csharp-Building-a-Useful-Extensible-NET-Console-Ap
-    // https://social.msdn.microsoft.com/Forums/vstudio/en-US/707e9ae1-a53f-4918-8ac4-62a1eddb3c4a/detecting-console-application-exit-in-c?forum=csharpgeneral
 
     public static class PrgConsole
     {
@@ -165,6 +162,11 @@ namespace DobotConsoleControl
             Error(txt);
         }
 
+        public static void Warning(string warning)
+        {
+            WriteToConsole("!!!!\tERROR: " + warning);
+        }
+
         public static void Warning(WARNINGS warning)
         {
             string txt;
@@ -189,36 +191,6 @@ namespace DobotConsoleControl
         }
 
     }
-
-    /*
-    public static class AppConfig{
-
-        public static void LoadConfigFile(string name)
-        {
-            string exePath = Assembly.GetExecutingAssembly().CodeBase;
-            ConfigurationManager.OpenExeConfiguration(exePath);
-        }
-
-        public static List<Double> LoadDwellTimes()
-        {
-            List<String> DwellTimesString = new List<String>(Properties.Settings.Default.DwellTimes.Split(',')); //ConfigurationManager.AppSettings[DwellTimes];
-            List<Double> DwellTimesDouble =
-            DwellTimes = new List<int>(//DwellTimes.AddRange(DwellTimesString);//DwellTimes.Add(DwellTimeDefault);
-
-
-            List <double> dListDbl = new List<double>();
-            List<string> dList = new List<string>(Properties.Settings.Default.DwellTimes.Split(',')); //ConfigurationManager.AppSettings[DwellTimes];
-            dList.ForEach(str => double.Parse(str));
-            //DwellTimes.AddRange(DwellTimesString);//DwellTimes.Add(DwellTimeDefault);
-
-            return dListDbl;
-        }
-
-        public static void SaveDwellTimes()
-        {
-            
-        }
-    }*/
 
     class Program
     {
@@ -251,31 +223,20 @@ namespace DobotConsoleControl
         static void Main(string[] args)
         {
             // load default configuration and default points
+            FileIO.InitializeDirectory();
+
             FileIO.LoadConfig();
             FileIO.LoadPoints();
-
-            //TODO read points from XML
-            // add all the pre-defined points to the point dictionary
-
-            /*points.Add("heightCheck", heightCheck);
-            points.Add("lithPickup", lithPickup);
-            points.Add("buildPlace", buildPlace);
-            points.Add("pickPoint", pickPoint);
-            points.Add("pickHigh", pickHigh);
-            points.Add("placePoint", placePoint);
-            points.Add("chillPoint", chillPoint);
-            points.Add("homePoint", homePoint);
-            */
 
             // used to intercept CTRL-C command and make dobot E-stop
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
 
             PrgConsole.WriteWelcome();
-            Dobot.Start();//StartDobot();
+            Dobot.Start();
             ArduinoComm.Connect();
 
             Run();
-            Dobot.Disconnect();//DobotDll.DisconnectDobot();
+            Dobot.Disconnect();
         }
 
         static void Run()
@@ -479,13 +440,6 @@ namespace DobotConsoleControl
                             break;
                     }
                     Dobot.SetLayerHeights(LayerHeights);
-                //if (Double.TryParse(commands[1], out lHeight))
-                //{
-                //    Dobot.LayerHeight = lHeight;
-                //    PrgConsole.SetVariable("LAYER_HEIGHT");
-                //}
-                //else
-                //    PrgConsole.Error(PrgConsole.ERRORS.INVALID_NUMBER);
                 break;
 
                 case "SetSafeHeight":
@@ -523,7 +477,13 @@ namespace DobotConsoleControl
                     Dobot.StoreCurrentPoint(commands[1]);
                     break;
 
+                case "ZPlatformRaise":
+                    ArduinoComm.Home();
+                    break;
 
+                case "ZPlatformStart":
+                    ArduinoComm.MoveStart();
+                    break;
                 case "SavePoints":
                     if (commands.Count > 1)
                         Dobot.SavePointsToFile(commands[1]);
@@ -571,10 +531,14 @@ namespace DobotConsoleControl
                         FileIO.LoadConfig();
                     break;
 
-                
+                case "LayerStatus":
+                    PrgConsole.StackUpdate(currentLayer, stackHeight);
+                    break;
+
                 case "ResetLayers":
                     stackHeight = 0;
                     currentLayer = 0;
+                    ArduinoComm.Home();
                     break;
 
                 case "setpoint":
@@ -586,18 +550,25 @@ namespace DobotConsoleControl
                         changePoint(ref homePoint, Double.Parse(commands[2]), Double.Parse(commands[3]), Double.Parse(commands[4]), Double.Parse(commands[5]));
                     break;
 
-                case "SeedPoints":
-                    Dobot.SeedPoints();
-                    break;
+                //case "SeedPoints":
+                //    Dobot.SeedPoints();
+                //    break;
 
                 
 
                 case "Home":
                     Dobot.Home();
                     ArduinoComm.Home();
+                    ArduinoComm.MoveStart();
                     break;
                 case "ArduinoConnect":
-                    ArduinoComm.Connect();
+                    try
+                    {
+                        ArduinoComm.Connect();
+                    } catch(Exception e)
+                    {
+                        PrgConsole.Warning("Arduino error, probably not on or not connected");
+                    }
                     break;
                 case "AHome":
                     ArduinoComm.Home();
@@ -626,6 +597,7 @@ namespace DobotConsoleControl
         [DllImport("Kernel32")]
         public static extern bool SetConsoleCtrlHandler(HandlerRoutine Handler, bool Add);      //external receives a deleagete
         public delegate bool HandlerRoutine();      //delegate type to be used as handler routine for SetConsoleCtrlHandler
+       
         /// <summary>
         /// Should force the dobot to E-stop if you close the program
         /// </summary>

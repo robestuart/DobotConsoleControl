@@ -63,14 +63,14 @@ namespace DobotConsoleControl
                         //Console.WriteLine(first);
                         if (first.Contains("Arduino"))//splitString[0].Equals("Arduino"))
                         {
-                            _portName = (string) bObj["DeviceID"];
+                            _portName = (string)bObj["DeviceID"];
                             //Console.WriteLine("SEND IT!!!");
                         }
                     }
                 }
             }
 
-            if (_serialPort != null ) {
+            if (_serialPort != null) {
                 try
                 {
                     _serialPort.Close();
@@ -80,13 +80,23 @@ namespace DobotConsoleControl
                     Console.Write(e.ToString());
                 }
             }
-            _serialPort = new SerialPort(_portName, _baudRate, _parity, _dataBits, _stopBits);
-            _serialPort.NewLine = "\n";
-            _serialPort.ReadTimeout = READ_TIMEOUT;
-            _serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
-            _serialPort.Open();
+
+            if (_portName != "")
+            {
+                _serialPort = new SerialPort(_portName, _baudRate, _parity, _dataBits, _stopBits);
+                _serialPort.NewLine = "\n";
+                _serialPort.ReadTimeout = READ_TIMEOUT;
+                _serialPort.DataReceived += new SerialDataReceivedEventHandler(DataReceivedHandler);
+                _serialPort.Open();
+
+                return true;
+            }
+            else
+            {
+                PrgConsole.Error("Arduino was not found please make sure it is plugged in.");
+                return false;
+            }
             
-            return true;
         }
 
         public static bool isOpen()
@@ -128,6 +138,11 @@ namespace DobotConsoleControl
             return _serialPort.ReadLine();
         }
 
+        static public void MoveStart()
+        {
+            Move(zInit);
+        }
+
         static public bool Home()
         {
             ArduinoCommand ac = new ArduinoCommand
@@ -137,7 +152,7 @@ namespace DobotConsoleControl
             };
 
             enqueueCmd(ac); //commandQueue.Enqueue(ac);
-            Move(zInit);
+            //Move(zInit);
 
             //SendString("1,", true);
             // Currently it just waits 2 seconds until homing procedure is done.
