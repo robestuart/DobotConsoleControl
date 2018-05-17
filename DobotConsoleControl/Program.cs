@@ -222,12 +222,18 @@ namespace DobotConsoleControl
 
         static void Main(string[] args)
         {
-            // load default configuration and default points
-            FileIO.InitializeDirectory();
+            try
+            {
+                // load default configuration and default points
+                FileIO.InitializeDirectory();
 
-            FileIO.LoadConfig();
-            FileIO.LoadPoints();
-
+                FileIO.LoadConfig();
+                FileIO.LoadPoints();
+            } catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
+            }
             // used to intercept CTRL-C command and make dobot E-stop
             SetConsoleCtrlHandler(new HandlerRoutine(ConsoleCtrlCheck), true);
 
